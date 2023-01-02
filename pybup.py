@@ -2,7 +2,7 @@
 # a very simple incremental backup utility
 
 # === params ===========================
-src = '/mnt/d/' # directory to backup
+src = '/mnt/p/' # directory to backup
 dest = '/mnt/q/' # backup directory
 ver = '0' # version number
 select = [] # only backup these folders
@@ -37,7 +37,7 @@ def copy_folder(src, dst):
             print('copy_folder() failed! you might not have permission!')
             exit(1)
 
-# utility for sorting pybup.txt (ignore time)
+# utility for sorting pybup.txt (accordig to '[size] [hash] [path]')
 def pybup_line_cmp(line, line1):
     str = line[:beg_time] + line[end_time:]
     str1 = line1[:beg_time] + line1[end_time:]
@@ -86,6 +86,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
+    # sort accordig to '[size] [hash] [path]'
     lines.sort(key=cmp_to_key(pybup_line_cmp))
 
     if fname != None:
@@ -393,6 +394,7 @@ for ind in range(ind0, Nfolder):
         continue
 
     # --- incremental backup ---
+    # pybup must be sorted accordig to '[size] [hash]'
     print('---- checking previous backup [' + os.path.split(dest2_last)[1] + '] ----', flush=True)    
     os.chdir(dest2_last)
     if (check_cwd(lazy_mode)):
@@ -402,18 +404,17 @@ for ind in range(ind0, Nfolder):
 
     print('---- starting incremental backup ----', flush=True)
     f = open('pybup.txt', 'r')
-    sha1_last = f.read().splitlines()
+    pybup_last = f.read().splitlines()
     f.close()
     os.chdir(src + '/' + folder)
     f = open('pybup.txt', 'r')
     pybup = f.read().splitlines()
     f.close()
     rename_count = 0; i = j = 0
-    # assuming both pybup_last and pybup are sorted
-    print('TODO: pybup_last and pybup are not sorted according to sha1! do so!')
+    
     Nf = len(pybup)
     for i in range(Nf):
-        hash = pybup[i][beg_hash:end_hash]
+        size_hash = pybup[i][beg_size:end_size+1] + pybup[i][beg_hash:end_hash]
         path = pybup[i][43:]
         print('[{}/{}] ||||||||||||||\r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
@@ -422,15 +423,15 @@ for ind in range(ind0, Nfolder):
             os.makedirs(tmp)
         # try to match a previous backup file
         match = False
-        while j < len(sha1_last):
-            hash_last = sha1_last[j][beg_hash:end_hash]
-            if hash_last > hash:
+        while j < len(pybup_last):
+            size_hash_last = pybup_last[j][beg_size:end_size+1] + pybup_last[j][beg_hash:end_hash]
+            if size_hash_last > size_hash:
                 break
-            elif hash_last == hash:
-                path_last = sha1_last[j][43:]
+            elif size_hash_last == size_hash:
+                path_last = pybup_last[j][43:]
                 os.rename(dest2_last+path_last, dest2+path)
                 rename_count += 1; match = True
-                del sha1_last[j]
+                del pybup_last[j]
                 break
             j += 1
         if not match: # no match, just copy
@@ -440,7 +441,7 @@ for ind in range(ind0, Nfolder):
     print('update previous pybup.txt')
     shutil.copyfile('pybup.txt', dest2 + '/' + 'pybup.txt')
     f = open(dest2_last+'/pybup.txt', 'w')
-    f.write('\n'.join(sha1_last) + '\n')
+    f.write('\n'.join(pybup_last) + '\n')
     f.close()
     
     # delete empty folders
