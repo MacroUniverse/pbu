@@ -36,29 +36,40 @@ def copy_folder(src, dst):
             exit(1)
 
 # generate pybup.txt
-# write to file if fname provided
-# doesn't include `fname` itself
-def size_time_sha1_cwd(fname=None, lazy=False):
+# write to file if fname provided, otherwise return list of lines
+# lazy mode: input the `pybup` (list of line) from `pybup.txt`
+def size_time_sha1_cwd(fname=None, pybup=None):
     flist = file_list_r('./')
     lines = []
     Nf = len(flist)
+    my_exclude = exclude
     if fname != None:
-        exclude.add(fname)
+        my_exclude.add(fname)
+
+    # create dict from '[size] [date] [path]' to [sha1]
+    if pybup != None:
+        hash_dict = {}
+        for line in pybup:
+            key = line[:end_time] + line[beg_path-1:]
+            hash_dict[key] = line[beg_hash:end_hash]
 
     for i in range(Nf):
         f = flist[i]
         if not os.path.exists(f): # deleted just now
             continue
-        # new pybup.txt format
-        time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
+        # get size and time
         size_str = '%015d' % os.stat(f).st_size
-        if not lazy:
+        time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
+        # get hash
+        if pybup == None:
             sha1str = sha1file(f)
-        else:
-            sha1str = ' '*(end_hash - beg_hash)
+        else: # lazy mode
+            key = size_str + ' ' + time_str + ' ' + f
+            try: sha1str = hash_dict[key]
+            except: sha1str = sha1file(f)
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
-        print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, line[beg_path:]), end="", flush=True)
-        if os.path.split(f)[1] in exclude:
+        print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, f), end="", flush=True)
+        if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
         lines.sort()
@@ -72,7 +83,7 @@ def size_time_sha1_cwd(fname=None, lazy=False):
     return lines
 
 # return True if review is needed, otherwise directory will be clean after return
-def check_cwd():
+def check_cwd(lazy=False):
     if os.path.exists('pybup-new.txt'):
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
         return True
@@ -107,10 +118,11 @@ def check_cwd():
         return False
     else: # pybup.txt non-empty
         print('pybup.txt not empty, rehashing...', flush=True)
-        pybup_new = '\n'.join(size_time_sha1_cwd()) + '\n'
         f = open('pybup.txt', 'r')
         pybup = f.read(); f.close()
-        if pybup_new != pybup: # hash change
+        pybup_new = size_time_sha1_cwd(None, pybup.splitlines())
+        pybup_new = '\n'.join(pybup_new) + '\n'
+        if pybup_new != pybup: # has change
             f = open('pybup-new.txt', 'w')
             f.write(pybup_new); f.close()
             print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash', flush=True)
