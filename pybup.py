@@ -20,6 +20,7 @@ import shutil # for copy file
 import errno
 import datetime
 import natsort # natural sort folder name
+from functools import cmp_to_key
 
 # exclude these files in pybup.txt
 exclude=('pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash')
@@ -35,6 +36,14 @@ def copy_folder(src, dst):
             # raise
             print('copy_folder() failed! you might not have permission!')
             exit(1)
+
+# utility for sorting pybup.txt (ignore time)
+def size_time_sha1_cmp(line, line1):
+    str = line[:beg_time] + line[end_time:]
+    str1 = line1[:beg_time] + line[end_time:]
+    if str < str1: return -1
+    if str1 < str: return 1
+    return 0
 
 # generate pybup.txt
 # write to file if fname provided, otherwise return list of lines
@@ -77,7 +86,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
-        lines.sort()
+        lines.sort(key=cmp_to_key(size_time_sha1_cmp))
 
     if fname != None:
         f = open(fname, 'w')
@@ -351,7 +360,7 @@ for ind in range(ind0, Nfolder):
             print('', flush=True)
             continue
         else:
-            print('pybup.txt identical, everything ok!'); print('')
+            print('pybup.txt identical'); print('everything ok!', flush=True)
             continue
     elif not dest2_last:
         # no previous backup, direct copy
