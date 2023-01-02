@@ -2,13 +2,13 @@
 # a very simple incremental backup utility
 
 # === params ===========================
-src = '/mnt/d/'
-dest = '/mnt/q/'
-ver = '0'
-select = [] # only backup these sub-dirs
+src = '/mnt/d/' # directory to backup
+dest = '/mnt/q/' # backup directory
+ver = '0' # version number
+select = [] # only backup these folders
+ignore = [] # ignore these folders
 start = '' # skip until this folder
-ignore = []
-debug_mode = True # don't delete pybup-nohash, check incremental backup
+debug_mode = True # won't pybup-nohash & check incremental backup
 # =====================================
 
 import os
@@ -17,6 +17,7 @@ import hashlib # for sha1sum
 import subprocess # for calling shell command
 import shutil # for copy file
 import errno
+import datetime
 import natsort # natural sort folder name
 
 # exclude these files in pybup.txt
@@ -34,7 +35,7 @@ def copy_folder(src, dst):
             print('copy_folder() failed! you might not have permission!')
             exit(1)
 
-# get a list of files and modified date and size of current directory
+# get a list of files and size and modified time of current directory (recursive)
 def size_time_cwd():
     flist = file_list_r('./'); Nf = len(flist)
     ftime = []
@@ -46,15 +47,17 @@ def size_time_cwd():
         print('[{}/{}] ||||||||||||||\r'.format(i+1, Nf), end="", flush=True)
         if os.path.split(f)[1] in exclude:
             continue
-        ftime.append(round(os.path.getmtime(f)))
-        fsize.append(os.stat(f).st_size)
-    return ftime, fsize
+        # 15 char local time accurate to second: e.g. '20230102.035311'
+        time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
+        ftime.append(time_str)
+        size_str = '%015d' % os.stat(f).st_size
+        fsize.append(size_str)
+    return flist, fsize, ftime
 
 # hash every file in current directory and sort hash to a list
-# sha1_cwd('pybup.txt') should be the same with `find . -type f -exec sha1sum {} \; | sort > pybup.txt`
 # write to file if fname provided
 # doesn't include `fname` itself
-def sha1_cwd(fname=None):
+def size_time_sha1_cwd(fname=None):
     flist = file_list_r('./')
     sha1 = []
     Nf = len(flist)
@@ -66,9 +69,11 @@ def sha1_cwd(fname=None):
         if not os.path.exists(f): # deleted just now
             continue
         # new pybup.txt format
-        # line = '%12d'.format(os.stat(f).st_size) + '  ' + round(os.path.getmtime(f)) + '  ' + sha1file(f) + '  ' + f
-        line = sha1file(f) + '  ' + f
-        print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, line[44:]), end="", flush=True)
+        time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
+        size_str = '%015d' % os.stat(f).st_size
+        sha1str = sha1file(f)
+        line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
+        print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, line[beg_path:]), end="", flush=True)
         if os.path.split(f)[1] in exclude:
             continue
         sha1.append(line)
@@ -144,21 +149,20 @@ def diff_cwd():
     while 1:
         if i == len(sha1):
             for j in range(j, len(sha1_new)):
-                output.append(sha1_new[j][44:] + ' [new]')
+                output.append(sha1_new[j][beg_path:] + ' [new]')
             break
         elif j == len(sha1_new):
             for i in range(i, len(sha1)):
-                output.append(sha1[i][44:] + ' [deleted]')
+                output.append(sha1[i][beg_path:] + ' [deleted]')
             break
-        hash = int(sha1[i][:40], 16)
-        hash_new = int(sha1_new[j][:40], 16)
+        hash = sha1[i][beg_hash:end_hash]; hash_new = sha1_new[j][beg_hash:end_hash]
         if hash == hash_new:
             i += 1; j += 1
         elif hash < hash_new:
-            output.append(sha1[i][44:] + ' [deleted]')
+            output.append(sha1[i][beg_path:] + ' [deleted]')
             i += 1
         else: # hash_new < hash
-            output.append(sha1_new[j][44:] + ' [new]')
+            output.append(sha1_new[j][beg_path:] + ' [new]')
             j += 1
     output.sort()
     return ('\n'.join(output))
@@ -243,6 +247,12 @@ def sha1_cwd_bash(fname=None):
 os.chdir(src)
 need_rerun = False
 
+# pybup.txt line format
+beg_size = 0; end_size = 14
+beg_time = 15; end_time = 30
+beg_hash = 31; end_hash = 71
+beg_path = 72
+
 if select:
     folders = select
 else:
@@ -273,9 +283,9 @@ for ind in range(ind0, Nfolder):
     os.chdir(src)
     folder = folders[ind]
 
-    print(''); print('='*40)
+    print(''); print('#'*40)
     print('[{}/{}] {}'.format(ind+1, Nfolder, folder))
-    print('='*40); print('', flush=True)
+    print('#'*40); print('', flush=True)
 
     if folder in ignore:
         print('folder ignored by `ignore` param.')
@@ -373,9 +383,11 @@ for ind in range(ind0, Nfolder):
     f.close()
     rename_count = 0; i = j = 0
     # assuming both sha1_last and sha1 and sorted
-    for i in range(len(sha1)):
-        hash = sha1[i][:40]
+    Nf = len(sha1)
+    for i in range(Nf):
+        hash = sha1[i][beg_hash:end_hash]
         path = sha1[i][43:]
+        print('[{}/{}] ||||||||||||||\r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
         tmp = os.path.split(dest2+path)[0]
         if not os.path.exists(tmp):
@@ -383,7 +395,7 @@ for ind in range(ind0, Nfolder):
         # try to match a previous backup file
         match = False
         while j < len(sha1_last):
-            hash_last = sha1_last[j][:40]
+            hash_last = sha1_last[j][beg_hash:end_hash]
             if hash_last > hash:
                 break
             elif hash_last == hash:
@@ -427,6 +439,6 @@ for ind in range(ind0, Nfolder):
         print('', flush=True)
 
 if need_rerun:
-    print('============ review & rerun needed =============')
+    print('--------- review & rerun needed ----------')
 else:
-    print('=============== ALL DONE ===============')
+    print('---------------- all done ----------------')
