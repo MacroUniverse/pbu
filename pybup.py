@@ -55,11 +55,11 @@ def size_time_sha1_cwd(fname=None, pybup=None):
             hash_dict[key] = line[beg_hash:end_hash]
 
     for i in range(Nf):
-        f = flist[i]
+        f = flist[i][2:]
         if not os.path.exists(f): # deleted just now
             continue
         # get size and time
-        size_str = '%015d' % os.stat(f).st_size
+        size_str = '%014d' % os.stat(f).st_size
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
         # get hash
         if pybup == None:
@@ -84,6 +84,9 @@ def size_time_sha1_cwd(fname=None, pybup=None):
 
 # return True if review is needed, otherwise directory will be clean after return
 def check_cwd(lazy_mode):
+    lazy_str = ''
+    if lazy_mode:
+        lazy_str = ' (lazy mode)'
     if os.path.exists('pybup-new.txt'):
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
         return True
@@ -96,18 +99,18 @@ def check_cwd(lazy_mode):
             print('rename to {}'.format(old_dir + '.broken'), flush=True)
             os.rename(old_dir, old_dir + '.broken')
             os.chdir(old_dir + '.broken')
-            print('hasing...', flush=True)
+            print('hasing{}...'.format(lazy_str), flush=True)
             size_time_sha1_cwd('pybup-new.txt')
             return True
         else:
             os.chdir(old_dir)
-            print('hasing...', flush=True)
+            print('hasing{}...'.format(lazy_str), flush=True)
             size_time_sha1_cwd('pybup.txt')
             return False
     elif os.stat('pybup.txt').st_size == 0:
         # pybup.txt is empty
         os.remove('pybup.txt')
-        print('hasing...', flush=True)
+        print('hasing{}...'.format(lazy_str), flush=True)
         size_time_sha1_cwd('pybup.txt')
         return False
     elif os.path.exists('pybup-norehash'):
@@ -117,7 +120,7 @@ def check_cwd(lazy_mode):
             os.remove('pybup-norehash')
         return False
     else: # pybup.txt non-empty, rehash
-        print('pybup.txt not empty, rehashing...', flush=True)
+        print('pybup.txt not empty, rehashing{}...'.format(lazy_str), flush=True)
         f = open('pybup.txt', 'r')
         pybup = f.read().splitlines(); f.close()
         if lazy_mode:
@@ -125,20 +128,9 @@ def check_cwd(lazy_mode):
         else:
             pybup_new = size_time_sha1_cwd(None)
         
-        # check for pybup change (will ignore 'time change only')
-        has_change = False
-        if len(pybup) == len(pybup_new):
-            for i in range(len(pybup)):
-                line = pybup[i]; line_new = pybup_new[i]
-                str1 = line[:end_size] + ' ' + line[beg_hash:end_hash] + ' ' + line[beg_path:]
-                str2 = line_new[:end_size] + ' ' + line_new[beg_hash:end_hash] + ' ' + line_new[beg_path:]
-                if str1 != str2:
-                    has_change = True
-                    break
-        
-        if has_change: # has change
+        if pybup_changed(pybup, pybup_new): # has change
             f = open('pybup-new.txt', 'w')
-            f.write(f.write('\n'.join(pybup_new) + '\n')); f.close()
+            f.write('\n'.join(pybup_new) + '\n'); f.close()
             f = open('pybup-diff.txt', 'w')
             f.write(diff_cwd()); f.close()
             print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash', flush=True)
@@ -146,7 +138,7 @@ def check_cwd(lazy_mode):
         else:
             print('no change or corruption!', flush=True)
             f = open('pybup.txt', 'w')
-            f.write(f.write('\n'.join(pybup_new) + '\n')); f.close()
+            f.write('\n'.join(pybup_new) + '\n'); f.close()
             return False
 
 # show difference between pybup-new.txt and pybup.txt of current folder
@@ -254,6 +246,17 @@ def sha1_cwd_bash(fname=None):
     return lines
 '''
 
+# compare two pybup.txt (list of lines)
+def pybup_changed(pybup, pybup1):
+    if len(pybup) == len(pybup1):
+            for i in range(len(pybup)):
+                line = pybup[i]; line1 = pybup1[i]
+                str = line[:end_size] + ' ' + line[beg_hash:]
+                str1 = line1[:end_size] + ' ' + line1[beg_hash:]
+                if str != str1:
+                    return True
+    return False
+
 ## =========== main() program ==============
 os.chdir(src)
 need_rerun = False
@@ -336,10 +339,10 @@ for ind in range(ind0, Nfolder):
             continue
         # compare 2 pybup.txt
         f = open(dest2 + '/pybup.txt', 'r')
-        sha1_dest = f.read(); f.close()
+        pybup_dest = f.read().splitlines(); f.close()
         f = open(src + '/' + folder + '/pybup.txt', 'r')
-        pybup = f.read(); f.close()
-        if (sha1_dest != pybup):
+        pybup = f.read().splitlines(); f.close()
+        if (pybup_changed(pybup, pybup_dest)):
             print('pybup.txt differs from source! please use a new version number and run again.')
             print('', flush=True)
             continue
@@ -365,10 +368,10 @@ for ind in range(ind0, Nfolder):
         continue
     # compare 2 pybup.txt
     f = open(dest2_last + '/pybup.txt', 'r')
-    sha1_dest = f.read(); f.close()
+    pybup_dest = f.read(); f.close()
     f = open(src + '/' + folder + '/pybup.txt', 'r')
     pybup = f.read(); f.close()
-    if (sha1_dest == pybup):
+    if (pybup_dest == pybup):
         # can rename version
         print('rename {} to {}'.format(dest2_last, dest2))
         os.rename(dest2_last, dest2)
