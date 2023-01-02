@@ -8,6 +8,7 @@ ver = '0' # version number
 select = [] # only backup these folders
 ignore = [] # ignore these folders
 start = '' # skip until this folder
+lazy_mode = True # hash a file only when size or time changed
 debug_mode = True # won't pybup-nohash & check incremental backup
 # =====================================
 
@@ -82,7 +83,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
     return lines
 
 # return True if review is needed, otherwise directory will be clean after return
-def check_cwd(lazy_mode=False):
+def check_cwd(lazy_mode):
     if os.path.exists('pybup-new.txt'):
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
         return True
@@ -159,23 +160,23 @@ def diff_cwd():
     while 1:
         if i == len(pybup):
             for j in range(j, len(pybup_new)):
-                output.append(pybup_new[j][beg_path:] + ' [new]')
+                output.append(pybup_new[j] + ' [new]')
             break
         elif j == len(pybup_new):
             for i in range(i, len(pybup)):
-                output.append(pybup[i][beg_path:] + ' [deleted]')
+                output.append(pybup[i] + ' [deleted]')
             break
         hash = pybup[i][beg_hash:end_hash]; hash_new = pybup_new[j][beg_hash:end_hash]
         if hash == hash_new:
             i += 1; j += 1
         elif hash < hash_new:
-            output.append(pybup[i][beg_path:] + ' [deleted]')
+            output.append(pybup[i] + ' [deleted]')
             i += 1
         else: # hash_new < hash
-            output.append(pybup_new[j][beg_path:] + ' [new]')
+            output.append(pybup_new[j] + ' [new]')
             j += 1
     output.sort()
-    return ('\n'.join(output))
+    return '\n'.join(output) + '\n'
 
 # sha1sum of a file
 # use 1MiB buffer size fot big file
@@ -248,7 +249,7 @@ def sha1_cwd_bash(fname=None):
         i += 1
     if fname != None:
         f = open('pybup.txt', 'w')
-        f.write('\n'.join(lines))
+        f.write('\n'.join(lines) + '\n')
         f.close()
     return lines
 '''
@@ -359,7 +360,7 @@ for ind in range(ind0, Nfolder):
     # last version backup exist
     os.chdir(dest2_last)
     print('checking ['+folder_ver_last+']'); print('-'*40, flush=True)
-    if (check_cwd()):
+    if (check_cwd(lazy_mode)):
         need_rerun = True
         continue
     # compare 2 pybup.txt
@@ -377,7 +378,7 @@ for ind in range(ind0, Nfolder):
     # --- incremental backup ---
     print('---- checking previous backup [' + os.path.split(dest2_last)[1] + '] ----', flush=True)    
     os.chdir(dest2_last)
-    if (check_cwd()):
+    if (check_cwd(lazy_mode)):
         need_rerun = True
         continue
     print('')
@@ -421,7 +422,7 @@ for ind in range(ind0, Nfolder):
     print('update previous pybup.txt')
     shutil.copyfile('pybup.txt', dest2 + '/' + 'pybup.txt')
     f = open(dest2_last+'/pybup.txt', 'w')
-    f.write('\n'.join(sha1_last))
+    f.write('\n'.join(sha1_last) + '\n')
     f.close()
     
     # delete empty folders
@@ -437,11 +438,11 @@ for ind in range(ind0, Nfolder):
     if debug_mode:
         print('------- DEBUG: rehash backup folder ------')
         os.chdir(dest2)
-        if (check_cwd()):
+        if (check_cwd(lazy_mode)):
             print('internal error: incremental backup failed!')
             need_rerun = True
         os.chdir(dest2_last)
-        if (check_cwd()):
+        if (check_cwd(lazy_mode)):
             print('internal error: incremental backup failed!')
             need_rerun = True
         print('everything ok!')
