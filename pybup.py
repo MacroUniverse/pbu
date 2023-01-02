@@ -88,7 +88,7 @@ def check_cwd():
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
         return True
     if not os.path.exists('pybup.txt'):
-        print('pybup.txt not found in', old_dir)
+        print('pybup.txt not found in', old_dir, 'please don\'t delete it!')
         old_dir = os.path.split(os.getcwd())[1]
         os.chdir('..')
         # in a backup version folder ?
@@ -96,11 +96,14 @@ def check_cwd():
             print('rename to {}'.format(old_dir + '.broken'), flush=True)
             os.rename(old_dir, old_dir + '.broken')
             os.chdir(old_dir + '.broken')
+            print('hasing...', flush=True)
+            sha1_cwd('pybup-new.txt')
+            return True
         else:
             os.chdir(old_dir)
-        print('hasing...', flush=True)
-        sha1_cwd()
-        return True
+            print('hasing...', flush=True)
+            sha1_cwd()
+            return False
     elif os.stat('pybup.txt').st_size == 0:
         # pybup.txt is empty
         os.remove('pybup.txt')
