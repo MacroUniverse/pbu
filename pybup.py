@@ -76,14 +76,13 @@ def size_time_sha1_cwd(fname=None, pybup=None):
 
     if fname != None:
         f = open(fname, 'w')
-        f.write('\n'.join(lines) + '\n')
-        f.close()
+        f.write('\n'.join(lines) + '\n'); f.close()
     else: # fname == None
         print('', flush=True)
     return lines
 
 # return True if review is needed, otherwise directory will be clean after return
-def check_cwd(lazy=False):
+def check_cwd(lazy_mode=False):
     if os.path.exists('pybup-new.txt'):
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
         return True
@@ -116,21 +115,37 @@ def check_cwd(lazy=False):
         if not debug_mode:
             os.remove('pybup-norehash')
         return False
-    else: # pybup.txt non-empty
+    else: # pybup.txt non-empty, rehash
         print('pybup.txt not empty, rehashing...', flush=True)
         f = open('pybup.txt', 'r')
-        pybup = f.read(); f.close()
-        pybup_new = size_time_sha1_cwd(None, pybup.splitlines())
-        pybup_new = '\n'.join(pybup_new) + '\n'
-        if pybup_new != pybup: # has change
+        pybup = f.read().splitlines(); f.close()
+        if lazy_mode:
+            pybup_new = size_time_sha1_cwd(None, pybup)
+        else:
+            pybup_new = size_time_sha1_cwd(None)
+        
+        # check for pybup change (will ignore 'time change only')
+        has_change = False
+        if len(pybup) == len(pybup_new):
+            for i in range(len(pybup)):
+                line = pybup[i]; line_new = pybup_new[i]
+                str1 = line[:end_size] + ' ' + line[beg_hash:end_hash] + ' ' + line[beg_path:]
+                str2 = line_new[:end_size] + ' ' + line_new[beg_hash:end_hash] + ' ' + line_new[beg_path:]
+                if str1 != str2:
+                    has_change = True
+                    break
+        
+        if has_change: # has change
             f = open('pybup-new.txt', 'w')
-            f.write(pybup_new); f.close()
-            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash', flush=True)
+            f.write(f.write('\n'.join(pybup_new) + '\n')); f.close()
             f = open('pybup-diff.txt', 'w')
             f.write(diff_cwd()); f.close()
+            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash', flush=True)
             return True
         else:
             print('no change or corruption!', flush=True)
+            f = open('pybup.txt', 'w')
+            f.write(f.write('\n'.join(pybup_new) + '\n')); f.close()
             return False
 
 # show difference between pybup-new.txt and pybup.txt of current folder
@@ -307,7 +322,7 @@ for ind in range(ind0, Nfolder):
     # === check source folder ===
     print('checking', '['+folder+']'); print('-'*40, flush=True)
     os.chdir(src + '/' + folder)
-    if (check_cwd()):
+    if (check_cwd(lazy_mode)):
         # `folder` has change or corruption
         need_rerun = True
         continue
@@ -315,7 +330,7 @@ for ind in range(ind0, Nfolder):
         # backup folder already exist, check
         print(''); os.chdir(dest2)
         print('checking ['+folder_ver+']'); print('-'*40, flush=True)
-        if (check_cwd()):
+        if (check_cwd(lazy_mode)):
             need_rerun = True
             continue
         # compare 2 pybup.txt
@@ -364,7 +379,6 @@ for ind in range(ind0, Nfolder):
     os.chdir(dest2_last)
     if (check_cwd()):
         need_rerun = True
-        print('================> backup corrupted! should not happen!')
         continue
     print('')
 
