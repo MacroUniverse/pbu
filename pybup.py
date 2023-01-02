@@ -40,6 +40,7 @@ def copy_folder(src, dst):
 # write to file if fname provided, otherwise return list of lines
 # lazy mode: input the `pybup` (list of line) from `pybup.txt`
 def size_time_sha1_cwd(fname=None, pybup=None):
+    lazy_mode = pybup != None
     flist = file_list_r('./')
     lines = []
     Nf = len(flist)
@@ -48,7 +49,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         my_exclude.add(fname)
 
     # create dict from '[size] [date] [path]' to [sha1]
-    if pybup != None:
+    if lazy_mode:
         hash_dict = {}
         for line in pybup:
             key = line[:end_time] + line[beg_path-1:]
@@ -62,12 +63,15 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         size_str = '%014d' % os.stat(f).st_size
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
         # get hash
-        if pybup == None:
+        if not lazy_mode:
             sha1str = sha1file(f)
         else: # lazy mode
             key = size_str + ' ' + time_str + ' ' + f
-            try: sha1str = hash_dict[key]
-            except: sha1str = sha1file(f)
+            try:
+                sha1str = hash_dict[key]
+            except:
+                sha1str = sha1file(f)
+                print('(not lazy) ', end="")
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, f), end="", flush=True)
         if os.path.split(f)[1] in my_exclude:
