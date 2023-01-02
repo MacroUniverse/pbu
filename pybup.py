@@ -102,19 +102,19 @@ def check_cwd(lazy_mode):
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
         return True
     if not os.path.exists('pybup.txt'):
-        print('pybup.txt not found in', old_dir, 'please don\'t delete it!')
-        old_dir = os.path.split(os.getcwd())[1]
+        print('pybup.txt not found, please don\'t delete it next time!')
+        cwd = os.path.split(os.getcwd())[1]
         os.chdir('..')
         # in a backup version folder ?
         if os.path.split(os.getcwd())[1][-6:] == '.pybup':
-            print('rename to {}'.format(old_dir + '.broken'), flush=True)
-            os.rename(old_dir, old_dir + '.broken')
-            os.chdir(old_dir + '.broken')
+            print('rename to {}'.format(cwd + '.broken'), flush=True)
+            os.rename(cwd, cwd + '.broken')
+            os.chdir(cwd + '.broken')
             print('hasing...', flush=True)
             size_time_sha1_cwd('pybup-new.txt')
             return True
         else:
-            os.chdir(old_dir)
+            os.chdir(cwd)
             print('hasing...', flush=True)
             size_time_sha1_cwd('pybup.txt')
             return False
