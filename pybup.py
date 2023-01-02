@@ -100,6 +100,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
 def check_cwd(lazy_mode):
     if os.path.exists('pybup-new.txt'):
         print('pending review, replace pybup.txt with pybup-new.txt when done.')
+        print('', flush=True)
         return True
     if not os.path.exists('pybup.txt'):
         print('pybup.txt not found, please don\'t delete it next time!')
@@ -112,6 +113,8 @@ def check_cwd(lazy_mode):
             os.chdir(cwd + '.broken')
             print('hasing...', flush=True)
             size_time_sha1_cwd('pybup-new.txt')
+            print('pending review, if everything ok, delete ".broken" from folder name and rename pybup-new.txt to pybup.txt.')
+            print('', flush=True)
             return True
         else:
             os.chdir(cwd)
