@@ -88,12 +88,10 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         lines.append(line)
     # sort accordig to '[size] [hash] [path]'
     lines.sort(key=cmp_to_key(pybup_line_cmp))
-
+    print('', flush=True)
     if fname != None:
         f = open(fname, 'w')
         f.write('\n'.join(lines) + '\n'); f.close()
-    else: # fname == None
-        print('', flush=True)
     return lines
 
 # return True if review is needed, otherwise directory will be clean after return
@@ -111,20 +109,20 @@ def check_cwd(lazy_mode):
             print('rename to {}'.format(cwd + '.broken'), flush=True)
             os.rename(cwd, cwd + '.broken')
             os.chdir(cwd + '.broken')
-            print('hasing...', flush=True)
+            print('hashing...', flush=True)
             size_time_sha1_cwd('pybup-new.txt')
             print('pending review, if everything ok, delete ".broken" from folder name and rename pybup-new.txt to pybup.txt.')
             print('', flush=True)
             return True
         else:
             os.chdir(cwd)
-            print('hasing...', flush=True)
+            print('hashing...', flush=True)
             size_time_sha1_cwd('pybup.txt')
             return False
     elif os.stat('pybup.txt').st_size == 0:
         # pybup.txt is empty
         os.remove('pybup.txt')
-        print('hasing...', flush=True)
+        print('hashing...', flush=True)
         size_time_sha1_cwd('pybup.txt')
         return False
     elif os.path.exists('pybup-norehash'):
