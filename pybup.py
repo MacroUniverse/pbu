@@ -5,7 +5,7 @@
 src = '/mnt/d/' # directory to backup
 dest = '/mnt/q/' # backup directory
 ver = '0' # version number
-select = [] # only backup these folders
+select = [''] # only backup these folders
 ignore = [] # ignore these folders
 start = '' # skip until this folder
 lazy_mode = True # hash a file only when size or time changed
@@ -38,9 +38,9 @@ def copy_folder(src, dst):
             exit(1)
 
 # utility for sorting pybup.txt (ignore time)
-def size_time_sha1_cmp(line, line1):
+def pybup_line_cmp(line, line1):
     str = line[:beg_time] + line[end_time:]
-    str1 = line1[:beg_time] + line[end_time:]
+    str1 = line1[:beg_time] + line1[end_time:]
     if str < str1: return -1
     if str1 < str: return 1
     return 0
@@ -57,7 +57,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
     if fname != None:
         my_exclude.add(fname)
 
-    # create dict from '[size] [date] [path]' to [sha1]
+    # create dict from '[size] [time] [path]' to [sha1]
     if lazy_mode:
         hash_dict = {}
         for line in pybup:
@@ -86,7 +86,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
-        lines.sort(key=cmp_to_key(size_time_sha1_cmp))
+    lines.sort(key=cmp_to_key(pybup_line_cmp))
 
     if fname != None:
         f = open(fname, 'w')
