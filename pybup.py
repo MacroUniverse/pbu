@@ -121,7 +121,6 @@ def check_cwd(lazy_mode):
             return False
     elif os.stat('pybup.txt').st_size == 0:
         # pybup.txt is empty
-        os.remove('pybup.txt')
         print('hashing...', flush=True)
         size_time_sha1_cwd('pybup.txt')
         return False
