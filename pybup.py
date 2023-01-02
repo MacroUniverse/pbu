@@ -5,7 +5,7 @@
 src = '/mnt/d/' # directory to backup
 dest = '/mnt/q/' # backup directory
 ver = '0' # version number
-select = [''] # only backup these folders
+select = [] # only backup these folders
 ignore = [] # ignore these folders
 start = '' # skip until this folder
 lazy_mode = True # hash a file only when size or time changed
@@ -144,7 +144,8 @@ def check_cwd(lazy_mode):
             f.write('\n'.join(pybup_new) + '\n'); f.close()
             f = open('pybup-diff.txt', 'w')
             f.write(diff_cwd()); f.close()
-            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash', flush=True)
+            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash')
+            print('', flush=True)
             return True
         else:
             print('no change or corruption!', flush=True)
@@ -356,9 +357,11 @@ for ind in range(ind0, Nfolder):
         if (pybup_changed(pybup, pybup_dest)):
             print('pybup.txt differs from source! please use a new version number and run again.')
             print('', flush=True)
+            need_rerun = True
             continue
         else:
             print('pybup.txt identical'); print('everything ok!', flush=True)
+            print('', flush=True)
             continue
     elif not dest2_last:
         # no previous backup, direct copy
