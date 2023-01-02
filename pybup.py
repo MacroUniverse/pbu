@@ -35,31 +35,12 @@ def copy_folder(src, dst):
             print('copy_folder() failed! you might not have permission!')
             exit(1)
 
-# get a list of files and size and modified time of current directory (recursive)
-def size_time_cwd():
-    flist = file_list_r('./'); Nf = len(flist)
-    ftime = []
-    fsize = []
-    for i in range(Nf):
-        f = flist[i]
-        if not os.path.exists(f): # deleted just now
-            continue
-        print('[{}/{}] ||||||||||||||\r'.format(i+1, Nf), end="", flush=True)
-        if os.path.split(f)[1] in exclude:
-            continue
-        # 15 char local time accurate to second: e.g. '20230102.035311'
-        time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
-        ftime.append(time_str)
-        size_str = '%015d' % os.stat(f).st_size
-        fsize.append(size_str)
-    return flist, fsize, ftime
-
-# hash every file in current directory and sort hash to a list
+# generate pybup.txt
 # write to file if fname provided
 # doesn't include `fname` itself
-def size_time_sha1_cwd(fname=None):
+def size_time_sha1_cwd(fname=None, lazy=False):
     flist = file_list_r('./')
-    sha1 = []
+    lines = []
     Nf = len(flist)
     if fname != None:
         exclude.add(fname)
@@ -71,21 +52,24 @@ def size_time_sha1_cwd(fname=None):
         # new pybup.txt format
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
         size_str = '%015d' % os.stat(f).st_size
-        sha1str = sha1file(f)
+        if not lazy:
+            sha1str = sha1file(f)
+        else:
+            sha1str = ' '*(end_hash - beg_hash)
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, line[beg_path:]), end="", flush=True)
         if os.path.split(f)[1] in exclude:
             continue
-        sha1.append(line)
-        sha1.sort()
+        lines.append(line)
+        lines.sort()
 
     if fname != None:
         f = open(fname, 'w')
-        f.write('\n'.join(sha1) + '\n')
+        f.write('\n'.join(lines) + '\n')
         f.close()
     else: # fname == None
         print('', flush=True)
-    return sha1
+    return lines
 
 # return True if review is needed, otherwise directory will be clean after return
 def check_cwd():
@@ -102,18 +86,18 @@ def check_cwd():
             os.rename(old_dir, old_dir + '.broken')
             os.chdir(old_dir + '.broken')
             print('hasing...', flush=True)
-            sha1_cwd('pybup-new.txt')
+            size_time_sha1_cwd('pybup-new.txt')
             return True
         else:
             os.chdir(old_dir)
             print('hasing...', flush=True)
-            sha1_cwd()
+            size_time_sha1_cwd('pybup.txt')
             return False
     elif os.stat('pybup.txt').st_size == 0:
         # pybup.txt is empty
         os.remove('pybup.txt')
         print('hasing...', flush=True)
-        sha1_cwd()
+        size_time_sha1_cwd('pybup.txt')
         return False
     elif os.path.exists('pybup-norehash'):
         # pybup.txt not empty, norehash
@@ -123,13 +107,12 @@ def check_cwd():
         return False
     else: # pybup.txt non-empty
         print('pybup.txt not empty, rehashing...', flush=True)
-        sha1_new = sha1_cwd()
-        sha1_new = '\n'.join(sha1_new) + '\n'
+        pybup_new = '\n'.join(size_time_sha1_cwd()) + '\n'
         f = open('pybup.txt', 'r')
-        sha1 = f.read(); f.close()
-        if sha1_new != sha1: # hash change
+        pybup = f.read(); f.close()
+        if pybup_new != pybup: # hash change
             f = open('pybup-new.txt', 'w')
-            f.write(sha1_new); f.close()
+            f.write(pybup_new); f.close()
             print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash', flush=True)
             f = open('pybup-diff.txt', 'w')
             f.write(diff_cwd()); f.close()
@@ -141,28 +124,28 @@ def check_cwd():
 # show difference between pybup-new.txt and pybup.txt of current folder
 def diff_cwd():
     f = open('pybup.txt', 'r')
-    sha1 = f.read().splitlines(); f.close()
+    pybup = f.read().splitlines(); f.close()
     f = open('pybup-new.txt', 'r')
-    sha1_new = f.read().splitlines(); f.close()
+    pybup_new = f.read().splitlines(); f.close()
     i = 0; j = 0
     output = []
     while 1:
-        if i == len(sha1):
-            for j in range(j, len(sha1_new)):
-                output.append(sha1_new[j][beg_path:] + ' [new]')
+        if i == len(pybup):
+            for j in range(j, len(pybup_new)):
+                output.append(pybup_new[j][beg_path:] + ' [new]')
             break
-        elif j == len(sha1_new):
-            for i in range(i, len(sha1)):
-                output.append(sha1[i][beg_path:] + ' [deleted]')
+        elif j == len(pybup_new):
+            for i in range(i, len(pybup)):
+                output.append(pybup[i][beg_path:] + ' [deleted]')
             break
-        hash = sha1[i][beg_hash:end_hash]; hash_new = sha1_new[j][beg_hash:end_hash]
+        hash = pybup[i][beg_hash:end_hash]; hash_new = pybup_new[j][beg_hash:end_hash]
         if hash == hash_new:
             i += 1; j += 1
         elif hash < hash_new:
-            output.append(sha1[i][beg_path:] + ' [deleted]')
+            output.append(pybup[i][beg_path:] + ' [deleted]')
             i += 1
         else: # hash_new < hash
-            output.append(sha1_new[j][beg_path:] + ' [new]')
+            output.append(pybup_new[j][beg_path:] + ' [new]')
             j += 1
     output.sort()
     return ('\n'.join(output))
@@ -223,9 +206,9 @@ def shell_cmd(*cmd):
 
 # recycled code
 '''
-# sha1_cwd() using bash command
+# size_time_sha1_cwd() using bash command
 def sha1_cwd_bash(fname=None):
-    print('deprecated! use sha1_cwd instead!'); sys.exit(1)
+    print('deprecated! use size_time_sha1_cwd instead!'); sys.exit(1)
     lines = shell_cmd('find', '.', '-type', 'f', '-exec', 'sha1sum', '{}', ';').splitlines()
     lines.sort()
     if fname != None:
@@ -327,8 +310,8 @@ for ind in range(ind0, Nfolder):
         f = open(dest2 + '/pybup.txt', 'r')
         sha1_dest = f.read(); f.close()
         f = open(src + '/' + folder + '/pybup.txt', 'r')
-        sha1 = f.read(); f.close()
-        if (sha1_dest != sha1):
+        pybup = f.read(); f.close()
+        if (sha1_dest != pybup):
             print('pybup.txt differs from source! please use a new version number and run again.')
             print('', flush=True)
             continue
@@ -356,8 +339,8 @@ for ind in range(ind0, Nfolder):
     f = open(dest2_last + '/pybup.txt', 'r')
     sha1_dest = f.read(); f.close()
     f = open(src + '/' + folder + '/pybup.txt', 'r')
-    sha1 = f.read(); f.close()
-    if (sha1_dest == sha1):
+    pybup = f.read(); f.close()
+    if (sha1_dest == pybup):
         # can rename version
         print('rename {} to {}'.format(dest2_last, dest2))
         os.rename(dest2_last, dest2)
@@ -379,14 +362,14 @@ for ind in range(ind0, Nfolder):
     f.close()
     os.chdir(src + '/' + folder)
     f = open('pybup.txt', 'r')
-    sha1 = f.read().splitlines()
+    pybup = f.read().splitlines()
     f.close()
     rename_count = 0; i = j = 0
-    # assuming both sha1_last and sha1 and sorted
-    Nf = len(sha1)
+    # assuming both pybup_last and pybup and sorted
+    Nf = len(pybup)
     for i in range(Nf):
-        hash = sha1[i][beg_hash:end_hash]
-        path = sha1[i][43:]
+        hash = pybup[i][beg_hash:end_hash]
+        path = pybup[i][43:]
         print('[{}/{}] ||||||||||||||\r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
         tmp = os.path.split(dest2+path)[0]
@@ -421,7 +404,7 @@ for ind in range(ind0, Nfolder):
     rm_empty_folders(dest2_last, False)
     
     # summary
-    print('total files:', len(sha1))
+    print('total files:', len(pybup))
     print('moved from previous version:', rename_count)
     print('', flush=True)
     
