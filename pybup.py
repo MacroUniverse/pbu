@@ -244,28 +244,6 @@ def shell_cmd(*cmd):
         sys.exit(1)
     return output.decode()
 
-# recycled code
-'''
-# size_time_sha1_cwd() using bash command
-def sha1_cwd_bash(fname=None):
-    print('deprecated! use size_time_sha1_cwd instead!'); sys.exit(1)
-    lines = shell_cmd('find', '.', '-type', 'f', '-exec', 'sha1sum', '{}', ';').splitlines()
-    lines.sort()
-    if fname != None:
-        exclude.add(fname)
-    i = 0
-    while i < len(lines):
-        if os.path.split(lines)[1] in exclude:
-            del lines[i]
-            i -= 1
-        i += 1
-    if fname != None:
-        f = open('pybup.txt', 'w')
-        f.write('\n'.join(lines) + '\n')
-        f.close()
-    return lines
-'''
-
 # compare two pybup.txt (list of lines)
 def pybup_changed(pybup, pybup1):
     if len(pybup) == len(pybup1):
@@ -448,12 +426,14 @@ for ind in range(ind0, Nfolder):
     # update previous pybup.txt
     print('update previous pybup.txt')
     shutil.copyfile('pybup.txt', dest2 + 'pybup.txt')
-    if not pybup_last:
-        os.remove(dest2_last + 'pybup.txt')
-    else:
+    if pybup_last:
         f = open(dest2_last + 'pybup.txt', 'w')
         f.write('\n'.join(pybup_last) + '\n')
         f.close()
+    else:
+        print('internal error: incremental backup should not happen, the backup folder should have been renamed to new version!')
+        print('please report this error, thankyou!')
+        sys.exit(1)
     
     # delete empty folders
     print('remove empty folders')
