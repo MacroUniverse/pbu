@@ -372,7 +372,7 @@ for ind in range(ind0, Nfolder):
     elif not dest2_last:
         # no previous backup, direct copy
         if dest2_last == '':
-            print('---- no previous backup, copying... ----', flush=True)
+            print('no previous backup, copying...', flush=True)
             os.chdir(src)
             # os.makedirs(dest2)
             # shell_cmd('cp', '-a', folder + '/.', dest2)
