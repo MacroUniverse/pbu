@@ -87,9 +87,9 @@ def size_time_sha1_cwd(fname=None, pybup=None):
                 print('(not lazy) ', end="")
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         str = '[{}/{}] {}'.format(i+1, Nf, f)
-        if len(str) > 180: str = str[:177] + '...\r'
-        elif len(str) < 180: str = str + ' '*(180-len(str)) + '\r'
-        print(str, end="", flush=True)
+        if len(str) > 180: str = str[:177] + '...'
+        elif len(str) < 180: str = str + ' '*(180-len(str))
+        print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
         if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
@@ -246,13 +246,14 @@ def shell_cmd(*cmd):
 
 # compare two pybup.txt (list of lines)
 def pybup_changed(pybup, pybup1):
-    if len(pybup) == len(pybup1):
-            for i in range(len(pybup)):
-                line = pybup[i]; line1 = pybup1[i]
-                str = line[:end_size] + ' ' + line[beg_hash:]
-                str1 = line1[:end_size] + ' ' + line1[beg_hash:]
-                if str != str1:
-                    return True
+    if len(pybup) != len(pybup1):
+        return True
+    for i in range(len(pybup)):
+        line = pybup[i]; line1 = pybup1[i]
+        str = line[:end_size] + ' ' + line[beg_hash:]
+        str1 = line1[:end_size] + ' ' + line1[beg_hash:]
+        if str != str1:
+            return True
     return False
 
 ## =========== main() program ==============
@@ -348,7 +349,7 @@ for ind in range(ind0, Nfolder):
             need_rerun = True
             continue
         else:
-            print('pybup.txt identical'); print('everything ok!', flush=True)
+            print('pybup.txt identical from ['+folder+'].'); print('everything ok!', flush=True)
             print('', flush=True)
             continue
     elif not dest2_last:
@@ -368,34 +369,26 @@ for ind in range(ind0, Nfolder):
         continue
     # compare 2 pybup.txt
     f = open(dest2_last + 'pybup.txt', 'r')
-    pybup_dest = f.read(); f.close()
+    pybup_dest = f.read().splitlines(); f.close()
     f = open(src + folder + '/pybup.txt', 'r')
-    pybup = f.read(); f.close()
-    if (pybup_dest == pybup):
-        # can rename version
-        print('rename {} to {}'.format(dest2_last, dest2))
-        os.rename(dest2_last, dest2)
-        print('', flush=True)
+    pybup = f.read().splitlines(); f.close()
+    if not pybup_changed(pybup, pybup_dest):
+        # can rename version directly
+        print('pybup.txt identical from src.')
+        print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
+        os.rename(dest2_last, dest2); print('', flush=True)
         continue
+    else:
+        print('pybup.txt different from src.'); print('', flush=True)
 
     # --- incremental backup ---
     # pybup must be sorted accordig to '[size] [hash]'
-    print('')
-    print('---- checking previous backup ['+folder_ver_last+'] ----', flush=True)    
-    os.chdir(dest2_last)
-    if (check_cwd(lazy_mode)):
-        need_rerun = True
-        continue
-    print('')
-
     print('---- starting incremental backup ----', flush=True)
-    f = open('pybup.txt', 'r')
-    pybup_last = f.read().splitlines()
-    f.close()
+    f = open(dest2_last + 'pybup.txt', 'r')
+    pybup_last = f.read().splitlines(); f.close()
     os.chdir(src + folder)
     f = open('pybup.txt', 'r')
-    pybup = f.read().splitlines()
-    f.close()
+    pybup = f.read().splitlines(); f.close()
     rename_count = 0; i = j = 0
     
     Nf = len(pybup)
@@ -421,7 +414,7 @@ for ind in range(ind0, Nfolder):
                 break
             j += 1
         if not match: # no match, just copy
-            shutil.copyfile(path[1:], dest2+path)
+            shutil.copyfile(path, dest2+path)
     
     # update previous pybup.txt
     print('update previous pybup.txt')
@@ -431,9 +424,8 @@ for ind in range(ind0, Nfolder):
         f.write('\n'.join(pybup_last) + '\n')
         f.close()
     else:
-        print('internal error: incremental backup should not happen, the backup folder should have been renamed to new version!')
-        print('please report this error, thankyou!')
-        sys.exit(1)
+        print('internal warning: incremental backup should not happen, the backup folder should have been renamed to new version.')
+        print('this is only an optimization warning, your backup is ok!')
     
     # delete empty folders
     print('remove empty folders')
