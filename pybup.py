@@ -82,7 +82,10 @@ def size_time_sha1_cwd(fname=None, pybup=None):
                 sha1str = sha1file(f)
                 print('(not lazy) ', end="")
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
-        print('[{}/{}] {}    ||||||||||||||\r'.format(i+1, Nf, f), end="", flush=True)
+        str = '[{}/{}] {}'.format(i+1, Nf, f)
+        if len(str) > 180: str = str[:177] + '...\r'
+        elif len(str) < 180: str = str + ' '*(180-len(str)) + '\r'
+        print(str, end="", flush=True)
         if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
@@ -376,7 +379,7 @@ for ind in range(ind0, Nfolder):
             continue
 
     # last version backup exist
-    os.chdir(dest2_last)
+    os.chdir(dest2_last); print('')
     print('checking ['+folder_ver_last+']'); print('-'*40, flush=True)
     if (check_cwd(lazy_mode)):
         need_rerun = True
@@ -416,7 +419,7 @@ for ind in range(ind0, Nfolder):
     for i in range(Nf):
         size_hash = pybup[i][beg_size:end_size+1] + pybup[i][beg_hash:end_hash]
         path = pybup[i][43:]
-        print('[{}/{}] ||||||||||||||\r'.format(i+1, Nf), end="", flush=True)
+        print('[{}/{}]          \r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
         tmp = os.path.split(dest2+path)[0]
         if not os.path.exists(tmp):
