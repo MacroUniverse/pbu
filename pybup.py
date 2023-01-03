@@ -11,6 +11,32 @@ import datetime
 import functools
 import natsort # natural sort folder name
 
+# globle variables with default values
+# can only be set once
+class gvars:
+    def __init__(self): # 构造函数（只能有一个）
+        self.src = '/mnt/d/' # directory to backup
+        self.dest = '/mnt/q/' # backup directory
+        self.ver = '0' # version number
+        self.select = [] # select folders to backup (even without pybup.txt)
+        self.ignore = [] # ignore these folders
+        self.start = '' # skip until this folder
+        self.lazy_mode = False # hash a file only when size or time changed
+        self.debug_mode = False # won't pybup-nohash & check incremental backup
+        self.path_max_sz = 130 # max length for file path display
+
+        # pybup.txt line format
+        self.beg_size = 0; self.end_size = 14
+        self.beg_time = 15; self.end_time = 30
+        self.beg_hash = 31; self.end_hash = 71
+        self.beg_path = 72
+
+g = gvars()
+
+# exclude these files in pybup.txt
+# add anything you want to ignore
+exclude = ('pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash')
+
 # copy folder recursively
 def copy_folder(src, dst):
     try:
@@ -25,8 +51,8 @@ def copy_folder(src, dst):
 
 # utility for sorting pybup.txt (accordig to '[size] [hash] [path]')
 def pybup_line_cmp(line, line1):
-    str = line[:beg_time] + line[end_time:]
-    str1 = line1[:beg_time] + line1[end_time:]
+    str = line[:g.beg_time] + line[g.end_time:]
+    str1 = line1[:g.beg_time] + line1[g.end_time:]
     if str < str1: return -1
     if str1 < str: return 1
     return 0
@@ -47,8 +73,8 @@ def size_time_sha1_cwd(fname=None, pybup=None):
     if lazy_mode:
         hash_dict = {}
         for line in pybup:
-            key = line[:end_time] + line[beg_path-1:]
-            hash_dict[key] = line[beg_hash:end_hash]
+            key = line[:g.end_time] + line[g.beg_path-1:]
+            hash_dict[key] = line[g.beg_hash:g.end_hash]
 
     for i in range(Nf):
         f = flist[i][2:]
@@ -69,8 +95,8 @@ def size_time_sha1_cwd(fname=None, pybup=None):
                 print('(not lazy) ', end="")
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         str = '[{}/{}] {}'.format(i+1, Nf, f)
-        if len(str) > path_max_sz: str = str[:path_max_sz-3] + '...'
-        elif len(str) < path_max_sz: str = str + ' '*(path_max_sz-len(str))
+        if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
+        elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
         if os.path.split(f)[1] in my_exclude:
             continue
@@ -116,17 +142,17 @@ def check_cwd(lazy_mode):
     elif os.path.exists('pybup-norehash'):
         # pybup.txt not empty, norehash
         print("pybup-norehash exist, assuming no change or corruption!", flush=True)
-        if not debug_mode:
+        if not g.debug_mode:
             os.remove('pybup-norehash')
         return False
     else: # pybup.txt non-empty, rehash
         f = open('pybup.txt', 'r')
         pybup = f.read().splitlines(); f.close()
         if lazy_mode:
-            print('pybup.txt not empty, rehashing (lazy mode)...', flush=True)
+            print('rehashing (lazy mode)...', flush=True)
             pybup_new = size_time_sha1_cwd(None, pybup)
         else:
-            print('pybup.txt not empty, rehashing...', flush=True)
+            print('rehashing...', flush=True)
             pybup_new = size_time_sha1_cwd(None)
         
         if pybup_changed(pybup, pybup_new): # has change
@@ -161,8 +187,8 @@ def diff_cwd():
                 output.append(pybup[i] + ' [deleted]')
             break
         line = pybup[i]; line_new = pybup_new[j]
-        str = line[:end_size] + ' ' + line[beg_hash:]
-        str_new = line_new[:end_size] + ' ' + line_new[beg_hash:]
+        str = line[:g.end_size] + ' ' + line[g.beg_hash:]
+        str_new = line_new[:g.end_size] + ' ' + line_new[g.beg_hash:]
         if str == str_new:
             i += 1; j += 1
         elif str < str_new:
@@ -234,8 +260,8 @@ def pybup_changed(pybup, pybup1):
         return True
     for i in range(len(pybup)):
         line = pybup[i]; line1 = pybup1[i]
-        str = line[:end_size] + ' ' + line[beg_hash:]
-        str1 = line1[:end_size] + ' ' + line1[beg_hash:]
+        str = line[:g.end_size] + ' ' + line[g.beg_hash:]
+        str1 = line1[:g.end_size] + ' ' + line1[g.beg_hash:]
         if str != str1:
             return True
     return False
@@ -251,8 +277,8 @@ def pybup_add_only(pybup, pybup1):
     new_file_list = []
     while i < N and j < N1:
         line = pybup[i]; line1 = pybup1[j]
-        str = line[:end_size] + ' ' + line[beg_hash:]
-        str1 = line1[:end_size] + ' ' + line1[beg_hash:]
+        str = line[:g.end_size] + ' ' + line[g.beg_hash:]
+        str1 = line1[:g.end_size] + ' ' + line1[g.beg_hash:]
         if str == str1:
             i += 1; j += 1; continue
         elif str > str1:
@@ -265,11 +291,11 @@ def pybup_add_only(pybup, pybup1):
     return -1
 
 # backup or check a single folder
-def backup1(folder, dest, ver):
-    os.chdir(src)
+def backup1(folder):
+    os.chdir(g.src)
 
-    folder_ver = folder + '.v' + ver
-    dest1 = dest + folder + '.pybup/'
+    folder_ver = folder + '.v' + g.ver
+    dest1 = g.dest + folder + '.pybup/'
     dest2 = dest1 + folder_ver + '/'
     
     # === search latest backup ===
@@ -288,34 +314,34 @@ def backup1(folder, dest, ver):
 
     # === check source folder ===
     print('checking', '['+folder+']'); print('-'*40, flush=True)
-    os.chdir(src + folder)
-    if (check_cwd(lazy_mode)):
+    os.chdir(g.src + folder)
+    if (check_cwd(g.lazy_mode)):
         # `folder` has change or corruption
         return True
     elif os.path.exists(dest2):
         # backup folder already exist, check
         print(''); os.chdir(dest2)
         print('checking ['+folder_ver+']'); print('-'*40, flush=True)
-        if (check_cwd(lazy_mode)):
+        if (check_cwd(g.lazy_mode)):
             return True
         # compare 2 pybup.txt
         f = open(dest2 + 'pybup.txt', 'r')
         pybup_dest = f.read().splitlines(); f.close()
-        f = open(src + folder + '/pybup.txt', 'r')
+        f = open(g.src + folder + '/pybup.txt', 'r')
         pybup = f.read().splitlines(); f.close()
         if (pybup_changed(pybup, pybup_dest)):
             print('pybup.txt differs from source! please use a new version number and run again.')
             print('', flush=True)
             return True
         else:
-            print('pybup.txt identical from ['+folder+'].'); print('everything ok!', flush=True)
-            print('', flush=True)
+            print('pybup.txt identical from ['+folder+'].'); print('')
+            print('everything ok!'); print('', flush=True)
             return False
     elif not dest2_last:
         # no previous backup, direct copy
         if dest2_last == '':
             print('no previous backup, copying...', flush=True)
-            os.chdir(src)
+            os.chdir(g.src)
             copy_folder(folder, dest2)
             print('', flush=True)
             return False
@@ -323,12 +349,12 @@ def backup1(folder, dest, ver):
     # last version backup exist
     os.chdir(dest2_last); print('')
     print('checking ['+folder_ver_last+']'); print('-'*40, flush=True)
-    if (check_cwd(lazy_mode)):
+    if (check_cwd(g.lazy_mode)):
         return True
     # compare 2 pybup.txt
     f = open(dest2_last + 'pybup.txt', 'r')
     pybup_dest = f.read().splitlines(); f.close()
-    f = open(src + folder + '/pybup.txt', 'r')
+    f = open(g.src + folder + '/pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
     cp_inds = pybup_add_only(pybup_dest, pybup)
     if isinstance(cp_inds, list):
@@ -340,14 +366,14 @@ def backup1(folder, dest, ver):
             return False
         # cp_inds not empty
         print('copying new files to [{}]...'.format(folder_ver))
-        os.chdir(src + folder)
+        os.chdir(g.src + folder)
         Ncp = len(cp_inds)
         for i in range(Ncp):
             ind = cp_inds[i]
-            path = pybup[ind][beg_path:]
+            path = pybup[ind][g.beg_path:]
             str = '[{}/{}] {}'.format(i+1, Ncp, path)
-            if len(str) > path_max_sz: str = str[:path_max_sz-3] + '...'
-            elif len(str) < path_max_sz: str = str + ' '*(path_max_sz-len(str))
+            if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
+            elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
             print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
             # ensure dest path exist
             dir = os.path.split(dest2+path)[0]
@@ -369,15 +395,15 @@ def backup1(folder, dest, ver):
     print('---- starting incremental backup ----', flush=True)
     f = open(dest2_last + 'pybup.txt', 'r')
     pybup_last = f.read().splitlines(); f.close()
-    os.chdir(src + folder)
+    os.chdir(g.src + folder)
     f = open('pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
     rename_count = 0; i = j = 0
     
     Nf = len(pybup)
     for i in range(Nf):
-        size_hash = pybup[i][beg_size:end_size+1] + pybup[i][beg_hash:end_hash]
-        path = pybup[i][beg_path:]
+        size_hash = pybup[i][g.beg_size:g.end_size+1] + pybup[i][g.beg_hash:g.end_hash]
+        path = pybup[i][g.beg_path:]
         print('[{}/{}]          \r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
         dir = os.path.split(dest2+path)[0]
@@ -386,11 +412,11 @@ def backup1(folder, dest, ver):
         # try to match a previous backup file
         match = False
         while j < len(pybup_last):
-            size_hash_last = pybup_last[j][beg_size:end_size+1] + pybup_last[j][beg_hash:end_hash]
+            size_hash_last = pybup_last[j][g.beg_size:g.end_size+1] + pybup_last[j][g.beg_hash:g.end_hash]
             if size_hash_last > size_hash:
                 break
             elif size_hash_last == size_hash:
-                path_last = pybup_last[j][beg_path:]
+                path_last = pybup_last[j][g.beg_path:]
                 os.rename(dest2_last + path_last, dest2+path)
                 rename_count += 1; match = True
                 del pybup_last[j]
@@ -423,11 +449,11 @@ def backup1(folder, dest, ver):
     print('', flush=True)
     
     need_rerun = False
-    if debug_mode:
+    if g.debug_mode:
         print('------- DEBUG: rehash last backup folder ------')
         if not delta_remainder_warning:
             os.chdir(dest2_last)
-            if (check_cwd(lazy_mode)):
+            if (check_cwd(g.lazy_mode)):
                 print('internal error: incremental backup failed!')
                 need_rerun = True
         print('everything ok!')
@@ -438,80 +464,60 @@ def backup1(folder, dest, ver):
 
 ## =========== main() program ==============
 
-# === params ===========================
-src = '/mnt/d/' # directory to backup
-dest = '/mnt/q/' # backup directory
-ver = '1' # version number
-select = ['比心'] # select folders to backup (even without pybup.txt)
-ignore = [] # ignore these folders
-start = '' # skip until this folder
-lazy_mode = True # hash a file only when size or time changed
-debug_mode = True # won't pybup-nohash & check incremental backup
-path_max_sz = 130
-# =====================================
+def main():
+    if g.src[-1] != '/': g.src += '/'
+    if g.dest[-1] != '/': g.dest += '/'
 
-# exclude these files in pybup.txt
-# add anything you want to ignore
-exclude=('pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash', 'Thumbs.db')
+    os.chdir(g.src)
+    need_rerun = False
 
-if src[-1] != '/': src += '/'
-if dest[-1] != '/': dest += '/'
-
-
-os.chdir(src)
-need_rerun = False
-
-# pybup.txt line format
-beg_size = 0; end_size = 14
-beg_time = 15; end_time = 30
-beg_hash = 31; end_hash = 71
-beg_path = 72
-
-if select:
-    folders = select
-else:
-    folders = next(os.walk('.'))[1]
-    folders.sort()
-
-# get folders with pybup.txt inside (or use `select` if not empty)
-print('folders to backup:'); print(''); i = 0
-if select:
-    folders = select
-
-while i < len(folders):
-    folder = folders[i]
-    if os.path.exists(folder + '/pybup.txt'):
-        print('[{}] {}'.format(i+1, folder))
-        i += 1
-    elif select:
-        open(folder + '/pybup.txt', 'w').close()
-        print('[{}] {}'.format(i+1, folder))
-        i += 1
+    if g.select:
+        folders = g.select
     else:
-        del folders[i]
-print(''); print('')
-Nfolder = len(folders)
+        folders = next(os.walk('.'))[1]
+        folders.sort()
 
-# skip until folder = start
-ind0 = 0
-if start:
-    for ind0 in range(Nfolder):
-        if folders[ind0] == start:
-            break
+    # get folders with pybup.txt inside (or use `select` if not empty)
+    print('folders to backup:'); print(''); i = 0
+    if g.select:
+        folders = g.select
 
-#  ==== loop through all sub folders =====
-need_rerun = False
-for ind in range(ind0, Nfolder):
-    folder = folders[ind]
-    print(''); print('#'*40)
-    print('[{}/{}] {}'.format(ind+1, Nfolder, folder))
-    print('#'*40); print('', flush=True)
-    if folder in ignore:
-        print('folder ignored by `ignore` param.')
-        continue
-    need_rerun = backup1(folder, dest, ver)
+    while i < len(folders):
+        folder = folders[i]
+        if os.path.exists(folder + '/pybup.txt'):
+            print('[{}] {}'.format(i+1, folder))
+            i += 1
+        elif g.select:
+            open(folder + '/pybup.txt', 'w').close()
+            print('[{}] {}'.format(i+1, folder))
+            i += 1
+        else:
+            del folders[i]
+    print(''); print('')
+    Nfolder = len(folders)
 
-if need_rerun:
-    print('--------- review & rerun needed ----------')
-else:
-    print('---------------- all done ----------------')
+    # skip until folder = start
+    ind0 = 0
+    if g.start:
+        for ind0 in range(Nfolder):
+            if folders[ind0] == g.start:
+                break
+
+    #  ==== loop through all sub folders =====
+    need_rerun = False
+    for ind in range(ind0, Nfolder):
+        folder = folders[ind]
+        print(''); print('#'*40)
+        print('[{}/{}] {}'.format(ind+1, Nfolder, folder))
+        print('#'*40); print('', flush=True)
+        if folder in g.ignore:
+            print('folder ignored by `ignore` param.')
+            continue
+        need_rerun = backup1(folder)
+
+    if need_rerun:
+        print('--------- review & rerun needed ----------')
+    else:
+        print('---------------- all done ----------------')
+
+main()
