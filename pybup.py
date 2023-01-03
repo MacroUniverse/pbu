@@ -4,12 +4,13 @@
 # === params ===========================
 src = '/mnt/d/' # directory to backup
 dest = '/mnt/q/' # backup directory
-ver = '0' # version number
-select = [] # select folders to backup (even without pybup.txt)
+ver = '1' # version number
+select = ['比心', 'pljj'] # select folders to backup (even without pybup.txt)
 ignore = [] # ignore these folders
 start = '' # skip until this folder
 lazy_mode = True # hash a file only when size or time changed
 debug_mode = True # won't pybup-nohash & check incremental backup
+path_max_sz = 130
 # =====================================
 
 import os
@@ -19,8 +20,8 @@ import subprocess # for calling shell command
 import shutil # for copy file
 import errno
 import datetime
+import functools
 import natsort # natural sort folder name
-from functools import cmp_to_key
 
 # exclude these files in pybup.txt
 # add anything you want to ignore
@@ -87,14 +88,14 @@ def size_time_sha1_cwd(fname=None, pybup=None):
                 print('(not lazy) ', end="")
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         str = '[{}/{}] {}'.format(i+1, Nf, f)
-        if len(str) > 180: str = str[:177] + '...'
-        elif len(str) < 180: str = str + ' '*(180-len(str))
+        if len(str) > path_max_sz: str = str[:path_max_sz-3] + '...'
+        elif len(str) < path_max_sz: str = str + ' '*(path_max_sz-len(str))
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
         if os.path.split(f)[1] in my_exclude:
             continue
         lines.append(line)
     # sort accordig to '[size] [hash] [path]'
-    lines.sort(key=cmp_to_key(pybup_line_cmp))
+    lines.sort(key=functools.cmp_to_key(pybup_line_cmp))
     print('', flush=True)
     if fname != None:
         f = open(fname, 'w')
@@ -113,7 +114,7 @@ def check_cwd(lazy_mode):
         os.chdir('..')
         # in a backup version folder ?
         if os.path.split(os.getcwd())[1][-6:] == '.pybup':
-            print('rename to {}'.format(cwd + '.broken'), flush=True)
+            print('rename to [{}]'.format(cwd + '.broken'), flush=True)
             os.rename(cwd, cwd + '.broken')
             os.chdir(cwd + '.broken')
             print('hashing...', flush=True)
@@ -244,7 +245,7 @@ def shell_cmd(*cmd):
         sys.exit(1)
     return output.decode()
 
-# compare two pybup.txt (list of lines)
+# check if `pybup1` is different from `pybup` (ignore time)
 def pybup_changed(pybup, pybup1):
     if len(pybup) != len(pybup1):
         return True
@@ -255,6 +256,26 @@ def pybup_changed(pybup, pybup1):
         if str != str1:
             return True
     return False
+
+# check if `pybup1` has only added files to `pybup` but not deleted or modified [return 1]
+# if nothing changed (ignore time), [return 0]
+# otherwise (more complicated change) [return -1]
+def pybup_add_only(pybup, pybup1):
+    i = 0; j = 0
+    N = len(pybup); N1 = len(pybup1)
+    if N > N1: return -1
+    while i < N and j < N1:
+        line = pybup[i]; line1 = pybup1[j]
+        str = line[:end_size] + ' ' + line[beg_hash:]
+        str1 = line1[:end_size] + ' ' + line1[beg_hash:]
+        if str == str1:
+            i += 1; j += 1; continue
+        elif str > str1:
+            j += 1; continue
+        else: # str < str1
+            return -1
+    if i == N: return 1
+    else: return -1
 
 ## =========== main() program ==============
 os.chdir(src)
@@ -272,13 +293,18 @@ else:
     folders = next(os.walk('.'))[1]
     folders.sort()
 
-# get folders with pybup.txt inside (or in `select`)
+# get folders with pybup.txt inside (or use `select` if not empty)
 print('folders to backup:'); print(''); i = 0
+if select:
+    folders = select
+
 while i < len(folders):
     folder = folders[i]
-    if folder in select:
-        open(folder + '/pybup.txt', 'w').close()
     if os.path.exists(folder + '/pybup.txt'):
+        print('[{}] {}'.format(i+1, folder))
+        i += 1
+    elif select:
+        open(folder + '/pybup.txt', 'w').close()
         print('[{}] {}'.format(i+1, folder))
         i += 1
     else:
@@ -372,14 +398,15 @@ for ind in range(ind0, Nfolder):
     pybup_dest = f.read().splitlines(); f.close()
     f = open(src + folder + '/pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
-    if not pybup_changed(pybup, pybup_dest):
+    ret = pybup_add_only(pybup, pybup_dest)
+    if ret >= 0: # no change or only added file(s)
         # can rename version directly
         print('pybup.txt identical from src.')
         print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
         os.rename(dest2_last, dest2); print('', flush=True)
         continue
     else:
-        print('pybup.txt different from src.'); print('', flush=True)
+        print('pybup.txt different from [{}], cannot rename.'.format(folder)); print('', flush=True)
 
     # --- incremental backup ---
     # pybup must be sorted accordig to '[size] [hash]'
@@ -419,6 +446,7 @@ for ind in range(ind0, Nfolder):
     # update previous pybup.txt
     print('update previous pybup.txt')
     shutil.copyfile('pybup.txt', dest2 + 'pybup.txt')
+    delta_remainder_warning = False
     if pybup_last:
         f = open(dest2_last + 'pybup.txt', 'w')
         f.write('\n'.join(pybup_last) + '\n')
@@ -426,6 +454,7 @@ for ind in range(ind0, Nfolder):
     else:
         print('internal warning: incremental backup should not happen, the backup folder should have been renamed to new version.')
         print('this is only an optimization warning, your backup is ok!')
+        delta_remainder_warning = True
     
     # delete empty folders
     print('remove empty folders')
@@ -443,10 +472,11 @@ for ind in range(ind0, Nfolder):
         if (check_cwd(lazy_mode)):
             print('internal error: incremental backup failed!')
             need_rerun = True
-        os.chdir(dest2_last)
-        if (check_cwd(lazy_mode)):
-            print('internal error: incremental backup failed!')
-            need_rerun = True
+        if not delta_remainder_warning:
+            os.chdir(dest2_last)
+            if (check_cwd(lazy_mode)):
+                print('internal error: incremental backup failed!')
+                need_rerun = True
         print('everything ok!')
         print('', flush=True)
 
