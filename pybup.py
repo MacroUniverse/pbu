@@ -5,7 +5,7 @@
 src = '/mnt/p/' # directory to backup
 dest = '/mnt/q/' # backup directory
 ver = '0' # version number
-select = [] # only backup these folders
+select = [] # select folders to backup (even without pybup.txt)
 ignore = [] # ignore these folders
 start = '' # skip until this folder
 lazy_mode = True # hash a file only when size or time changed
@@ -289,10 +289,12 @@ else:
     folders = next(os.walk('.'))[1]
     folders.sort()
 
-# get folders with pybup.txt inside
+# get folders with pybup.txt inside (or in `select`)
 print('folders to backup:'); print(''); i = 0
 while i < len(folders):
     folder = folders[i]
+    if folder in select:
+        open(folder + '/pybup.txt', 'w').close()
     if os.path.exists(folder + '/pybup.txt'):
         print('[{}] {}'.format(i+1, folder))
         i += 1
