@@ -5,5 +5,6 @@ simple generic backup script
 * `pybup.txt` keeps the info for every file inside, format: `[size] [time] [sha1] [path]`.
 * incremental backup will just move identical files from previous version, if any exist
 * `lazy_mode`: hash a file only when size or time changed. This will not protect against bit rot, turn off once in a while and rerun.
+* \[deprecated\] create an empty file `pybup-norehash` in the same folder with `pybup.txt` to let the script assume folder is up to date and do nochecking at all.
 
 ![flowchart](pybup.png)
