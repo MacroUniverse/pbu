@@ -2,7 +2,7 @@
 # a very simple incremental backup utility
 
 # === params ===========================
-src = '/mnt/p/' # directory to backup
+src = '/mnt/d/' # directory to backup
 dest = '/mnt/q/' # backup directory
 ver = '0' # version number
 select = [] # select folders to backup (even without pybup.txt)
@@ -23,7 +23,11 @@ import natsort # natural sort folder name
 from functools import cmp_to_key
 
 # exclude these files in pybup.txt
-exclude=('pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash')
+# add anything you want to ignore
+exclude=('pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash', 'Thumbs.db')
+
+if src[-1] != '/': src += '/'
+if dest[-1] != '/': dest += '/'
 
 # copy folder recursively
 def copy_folder(src, dst):
@@ -324,8 +328,8 @@ for ind in range(ind0, Nfolder):
         continue
 
     folder_ver = folder + '.v' + ver
-    dest1 = dest + '/' + folder + '.pybup'
-    dest2 = dest1 + '/' + folder_ver
+    dest1 = dest + folder + '.pybup/'
+    dest2 = dest1 + folder_ver + '/'
     
     # === search latest backup ===
     print('current backup [{}]'.format(folder_ver), flush=True)
@@ -335,7 +339,7 @@ for ind in range(ind0, Nfolder):
         if backups: # found previous packup(s)
             backups = natsort.natsorted(backups)
             folder_ver_last = backups[-1]
-            dest2_last = dest1 + '/' + folder_ver_last
+            dest2_last = dest1 + folder_ver_last + '/'
             print('previous backup [{}]'.format(folder_ver_last))
         else: # no previous packup(s)
             print('previous backup not found!')
@@ -343,7 +347,7 @@ for ind in range(ind0, Nfolder):
 
     # === check source folder ===
     print('checking', '['+folder+']'); print('-'*40, flush=True)
-    os.chdir(src + '/' + folder)
+    os.chdir(src + folder)
     if (check_cwd(lazy_mode)):
         # `folder` has change or corruption
         need_rerun = True
@@ -356,9 +360,9 @@ for ind in range(ind0, Nfolder):
             need_rerun = True
             continue
         # compare 2 pybup.txt
-        f = open(dest2 + '/pybup.txt', 'r')
+        f = open(dest2 + 'pybup.txt', 'r')
         pybup_dest = f.read().splitlines(); f.close()
-        f = open(src + '/' + folder + '/pybup.txt', 'r')
+        f = open(src + folder + '/pybup.txt', 'r')
         pybup = f.read().splitlines(); f.close()
         if (pybup_changed(pybup, pybup_dest)):
             print('pybup.txt differs from source! please use a new version number and run again.')
@@ -374,8 +378,6 @@ for ind in range(ind0, Nfolder):
         if dest2_last == '':
             print('no previous backup, copying...', flush=True)
             os.chdir(src)
-            # os.makedirs(dest2)
-            # shell_cmd('cp', '-a', folder + '/.', dest2)
             copy_folder(folder, dest2)
             print('', flush=True)
             continue
@@ -387,9 +389,9 @@ for ind in range(ind0, Nfolder):
         need_rerun = True
         continue
     # compare 2 pybup.txt
-    f = open(dest2_last + '/pybup.txt', 'r')
+    f = open(dest2_last + 'pybup.txt', 'r')
     pybup_dest = f.read(); f.close()
-    f = open(src + '/' + folder + '/pybup.txt', 'r')
+    f = open(src + folder + '/pybup.txt', 'r')
     pybup = f.read(); f.close()
     if (pybup_dest == pybup):
         # can rename version
@@ -400,7 +402,8 @@ for ind in range(ind0, Nfolder):
 
     # --- incremental backup ---
     # pybup must be sorted accordig to '[size] [hash]'
-    print('---- checking previous backup [' + os.path.split(dest2_last)[1] + '] ----', flush=True)    
+    print('')
+    print('---- checking previous backup ['+folder_ver_last+'] ----', flush=True)    
     os.chdir(dest2_last)
     if (check_cwd(lazy_mode)):
         need_rerun = True
@@ -411,7 +414,7 @@ for ind in range(ind0, Nfolder):
     f = open('pybup.txt', 'r')
     pybup_last = f.read().splitlines()
     f.close()
-    os.chdir(src + '/' + folder)
+    os.chdir(src + folder)
     f = open('pybup.txt', 'r')
     pybup = f.read().splitlines()
     f.close()
@@ -420,12 +423,12 @@ for ind in range(ind0, Nfolder):
     Nf = len(pybup)
     for i in range(Nf):
         size_hash = pybup[i][beg_size:end_size+1] + pybup[i][beg_hash:end_hash]
-        path = pybup[i][43:]
+        path = pybup[i][beg_path:]
         print('[{}/{}]          \r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
-        tmp = os.path.split(dest2+path)[0]
-        if not os.path.exists(tmp):
-            os.makedirs(tmp)
+        dir = os.path.split(dest2+path)[0]
+        if not os.path.exists(dir):
+            os.makedirs(dir)
         # try to match a previous backup file
         match = False
         while j < len(pybup_last):
@@ -433,8 +436,8 @@ for ind in range(ind0, Nfolder):
             if size_hash_last > size_hash:
                 break
             elif size_hash_last == size_hash:
-                path_last = pybup_last[j][43:]
-                os.rename(dest2_last+path_last, dest2+path)
+                path_last = pybup_last[j][beg_path:]
+                os.rename(dest2_last + path_last, dest2+path)
                 rename_count += 1; match = True
                 del pybup_last[j]
                 break
@@ -444,15 +447,18 @@ for ind in range(ind0, Nfolder):
     
     # update previous pybup.txt
     print('update previous pybup.txt')
-    shutil.copyfile('pybup.txt', dest2 + '/' + 'pybup.txt')
-    f = open(dest2_last+'/pybup.txt', 'w')
-    f.write('\n'.join(pybup_last) + '\n')
-    f.close()
+    shutil.copyfile('pybup.txt', dest2 + 'pybup.txt')
+    if not pybup_last:
+        os.remove(dest2_last + 'pybup.txt')
+    else:
+        f = open(dest2_last + 'pybup.txt', 'w')
+        f.write('\n'.join(pybup_last) + '\n')
+        f.close()
     
     # delete empty folders
     print('remove empty folders')
     # shell_cmd('find', dest2_last, '-empty', '-type', 'd', '-delete')
-    rm_empty_folders(dest2_last, False)
+    rm_empty_folders(dest2_last, True)
     
     # summary
     print('total files:', len(pybup))
