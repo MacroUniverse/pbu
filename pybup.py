@@ -160,13 +160,15 @@ def diff_cwd():
             for i in range(i, len(pybup)):
                 output.append(pybup[i] + ' [deleted]')
             break
-        hash = pybup[i][beg_hash:end_hash]; hash_new = pybup_new[j][beg_hash:end_hash]
-        if hash == hash_new:
+        line = pybup[i]; line_new = pybup_new[j]
+        str = line[:end_size] + ' ' + line[beg_hash:]
+        str_new = line_new[:end_size] + ' ' + line_new[beg_hash:]
+        if str == str_new:
             i += 1; j += 1
-        elif hash < hash_new:
+        elif str < str_new:
             output.append(pybup[i] + ' [deleted]')
             i += 1
-        else: # hash_new < hash
+        else: # str_new < str
             output.append(pybup_new[j] + ' [new]')
             j += 1
     output.sort()
@@ -238,13 +240,15 @@ def pybup_changed(pybup, pybup1):
             return True
     return False
 
-# check if `pybup1` has only added files to `pybup` but not deleted or modified [return 1]
-# if nothing changed (ignore time), [return 0]
-# otherwise (more complicated change) [return -1]
+# check if `pybup1` has only added files to `pybup` but not deleted or modified
+# [return list of added file paths] if only added files
+# [return empty list] if nothing changed (ignore time)
+# [return -1] otherwise (more complicated change)
 def pybup_add_only(pybup, pybup1):
     i = 0; j = 0
     N = len(pybup); N1 = len(pybup1)
     if N > N1: return -1
+    new_file_list = []
     while i < N and j < N1:
         line = pybup[i]; line1 = pybup1[j]
         str = line[:end_size] + ' ' + line[beg_hash:]
@@ -252,11 +256,13 @@ def pybup_add_only(pybup, pybup1):
         if str == str1:
             i += 1; j += 1; continue
         elif str > str1:
+            new_file_list.append(j)
             j += 1; continue
         else: # str < str1
             return -1
-    if i == N: return 1
-    else: return -1
+    if i == N:
+        return new_file_list
+    return -1
 
 # backup or check a single folder
 def backup1(folder, dest, ver):
@@ -285,15 +291,13 @@ def backup1(folder, dest, ver):
     os.chdir(src + folder)
     if (check_cwd(lazy_mode)):
         # `folder` has change or corruption
-        need_rerun = True
-        return
+        return True
     elif os.path.exists(dest2):
         # backup folder already exist, check
         print(''); os.chdir(dest2)
         print('checking ['+folder_ver+']'); print('-'*40, flush=True)
         if (check_cwd(lazy_mode)):
-            need_rerun = True
-            return
+            return True
         # compare 2 pybup.txt
         f = open(dest2 + 'pybup.txt', 'r')
         pybup_dest = f.read().splitlines(); f.close()
@@ -302,12 +306,11 @@ def backup1(folder, dest, ver):
         if (pybup_changed(pybup, pybup_dest)):
             print('pybup.txt differs from source! please use a new version number and run again.')
             print('', flush=True)
-            need_rerun = True
-            return
+            return True
         else:
             print('pybup.txt identical from ['+folder+'].'); print('everything ok!', flush=True)
             print('', flush=True)
-            return
+            return False
     elif not dest2_last:
         # no previous backup, direct copy
         if dest2_last == '':
@@ -315,25 +318,49 @@ def backup1(folder, dest, ver):
             os.chdir(src)
             copy_folder(folder, dest2)
             print('', flush=True)
-            return
+            return False
 
     # last version backup exist
     os.chdir(dest2_last); print('')
     print('checking ['+folder_ver_last+']'); print('-'*40, flush=True)
     if (check_cwd(lazy_mode)):
-        need_rerun = True
-        return
+        return True
     # compare 2 pybup.txt
     f = open(dest2_last + 'pybup.txt', 'r')
     pybup_dest = f.read().splitlines(); f.close()
     f = open(src + folder + '/pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
-    if pybup_add_only(pybup_dest, pybup) >= 0:
+    cp_inds = pybup_add_only(pybup_dest, pybup)
+    if isinstance(cp_inds, list):
         # no change or only added file(s)
         # can rename version directly
         print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
         os.rename(dest2_last, dest2); print('', flush=True)
-        return
+        if not cp_inds:
+            return False
+        # cp_inds not empty
+        print('copying new files to [{}]...'.format(folder_ver))
+        os.chdir(src + folder)
+        Ncp = len(cp_inds)
+        for i in range(Ncp):
+            ind = cp_inds[i]
+            path = pybup[ind][beg_path:]
+            str = '[{}/{}] {}'.format(i+1, Ncp, path)
+            if len(str) > path_max_sz: str = str[:path_max_sz-3] + '...'
+            elif len(str) < path_max_sz: str = str + ' '*(path_max_sz-len(str))
+            print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
+            # ensure dest path exist
+            dir = os.path.split(dest2+path)[0]
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            shutil.copyfile(path, dest2+path)
+            pybup_dest.append(pybup[ind])
+        print(''); print('update pybup.txt')
+        pybup_dest.sort(key=functools.cmp_to_key(pybup_line_cmp))
+        f = open(dest2 + 'pybup.txt', 'w')
+        f.write('\n'.join(pybup_dest) + '\n'); f.close()
+        print('')
+        return False
     else:
         print('cannot rename.'.format(folder)); print('', flush=True)
 
@@ -395,12 +422,9 @@ def backup1(folder, dest, ver):
     print('files moved from previous version:', rename_count)
     print('', flush=True)
     
+    need_rerun = False
     if debug_mode:
-        print('------- DEBUG: rehash backup folder ------')
-        os.chdir(dest2)
-        if (check_cwd(lazy_mode)):
-            print('internal error: incremental backup failed!')
-            need_rerun = True
+        print('------- DEBUG: rehash last backup folder ------')
         if not delta_remainder_warning:
             os.chdir(dest2_last)
             if (check_cwd(lazy_mode)):
@@ -408,6 +432,8 @@ def backup1(folder, dest, ver):
                 need_rerun = True
         print('everything ok!')
         print('', flush=True)
+
+    return need_rerun
 
 
 ## =========== main() program ==============
@@ -474,6 +500,7 @@ if start:
             break
 
 #  ==== loop through all sub folders =====
+need_rerun = False
 for ind in range(ind0, Nfolder):
     folder = folders[ind]
     print(''); print('#'*40)
@@ -482,7 +509,7 @@ for ind in range(ind0, Nfolder):
     if folder in ignore:
         print('folder ignored by `ignore` param.')
         continue
-    backup1(folder, dest, ver)
+    need_rerun = backup1(folder, dest, ver)
 
 if need_rerun:
     print('--------- review & rerun needed ----------')
