@@ -328,7 +328,7 @@ def backup1(folder, dest, ver):
     pybup_dest = f.read().splitlines(); f.close()
     f = open(src + folder + '/pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
-    if pybup_add_only(pybup, pybup_dest) >= 0:
+    if pybup_add_only(pybup_dest, pybup) >= 0:
         # no change or only added file(s)
         # can rename version directly
         print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
