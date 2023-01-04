@@ -114,8 +114,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
 # return True if review is needed, otherwise directory will be clean after return
 def check_cwd(lazy_mode):
     if os.path.exists('pybup-new.txt'):
-        print('pending review, replace pybup.txt with pybup-new.txt when done.')
-        print('', flush=True)
+        print('pending review, replace pybup.txt with pybup-new.txt when done.\n', flush=True)
         return True
     if not os.path.exists('pybup.txt'):
         print('pybup.txt not found, please don\'t delete it next time!')
@@ -128,8 +127,7 @@ def check_cwd(lazy_mode):
             os.chdir(cwd + '.broken')
             print('hashing...', flush=True)
             size_time_sha1_cwd('pybup-new.txt')
-            print('pending review, if everything ok, delete ".broken" from folder name and rename pybup-new.txt to pybup.txt.')
-            print('', flush=True)
+            print('pending review, if everything ok, delete ".broken" from folder name and rename pybup-new.txt to pybup.txt.\n', flush=True)
             return True
         else:
             os.chdir(cwd)
@@ -162,8 +160,7 @@ def check_cwd(lazy_mode):
             f.write('\n'.join(pybup_new) + '\n'); f.close()
             f = open('pybup-diff.txt', 'w')
             f.write(diff_cwd()); f.close()
-            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash')
-            print('', flush=True)
+            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash\n', flush=True)
             return True
         else:
             print('no change or corruption!', flush=True)
@@ -336,8 +333,8 @@ def backup1(folder):
             print('', flush=True)
             return True
         else:
-            print('pybup.txt identical from ['+folder+'].'); print('')
-            print('everything ok!'); print('', flush=True)
+            print('pybup.txt identical from ['+folder+'].\n');
+            print('everything ok!\n', flush=True)
             return False
     elif not dest2_last:
         # no previous backup, direct copy
@@ -386,11 +383,10 @@ def backup1(folder):
         print(''); print('update pybup.txt')
         pybup_dest.sort(key=functools.cmp_to_key(pybup_line_cmp))
         f = open(dest2 + 'pybup.txt', 'w')
-        f.write('\n'.join(pybup_dest) + '\n'); f.close()
-        print('')
+        f.write('\n'.join(pybup_dest) + '\n'); f.close(); print('')
         return False
     else:
-        print('cannot rename.'.format(folder)); print('', flush=True)
+        print('cannot rename.\n'.format(folder), flush=True)
 
     # --- incremental backup ---
     # pybup must be sorted accordig to '[size] [hash]'
@@ -447,8 +443,7 @@ def backup1(folder):
     
     # summary
     print('total files:', len(pybup))
-    print('files moved from previous version:', rename_count)
-    print('', flush=True)
+    print('files moved from previous version:', rename_count, '\n', flush=True)
     
     need_rerun = False
     if g.debug_mode:
@@ -458,8 +453,7 @@ def backup1(folder):
             if (check_cwd(g.lazy_mode)):
                 print('internal error: incremental backup failed!')
                 need_rerun = True
-        print('everything ok!')
-        print('', flush=True)
+        print('everything ok!\n', flush=True)
 
     return need_rerun
 
@@ -481,7 +475,7 @@ def main():
         folders.sort()
 
     # get folders with pybup.txt inside (or use `select` if not empty)
-    print('folders to backup:'); print(''); i = 0
+    print('folders to backup:\n'); i = 0
     if g.select:
         folders = g.select
 
@@ -496,7 +490,7 @@ def main():
             i += 1
         else:
             del folders[i]
-    print(''); print('')
+    print('\n', flush=True)
     Nfolder = len(folders)
 
     # skip until folder = start
@@ -510,9 +504,9 @@ def main():
     need_rerun = False
     for ind in range(ind0, Nfolder):
         folder = folders[ind]
-        print(''); print('#'*40)
+        print('\n' + '#'*40)
         print('[{}/{}] {}'.format(ind+1, Nfolder, folder))
-        print('#'*40); print('', flush=True)
+        print('#'*40 + '\n', flush=True)
         if folder in g.ignore_folders:
             print('folder ignored by `ignore_folders` param.')
             continue
