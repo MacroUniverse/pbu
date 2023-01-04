@@ -11,31 +11,30 @@ import datetime
 import functools
 import natsort # natural sort folder name
 
-# globle variables with default values
-# can only be set once
+# globle variables (with default values)
+# should only be set once at most
 class gvars:
-    def __init__(self): # 构造函数（只能有一个）
+    def __init__(self):
+        # ================== user params ========================
         self.src = '/mnt/d/' # directory to backup
         self.dest = '/mnt/q/' # backup directory
         self.ver = '0' # version number
         self.select = [] # select folders to backup (even without pybup.txt)
-        self.ignore = [] # ignore these folders
+        self.ignore_folders = [] # ignore these folders
         self.start = '' # skip until this folder
-        self.lazy_mode = False # hash a file only when size or time changed
+        self.lazy_mode = True # hash a file only when size or time changed
         self.debug_mode = False # won't pybup-nohash & check incremental backup
-        self.path_max_sz = 130 # max length for file path display
-
-        # pybup.txt line format
-        self.beg_size = 0; self.end_size = 14
-        self.beg_time = 15; self.end_time = 30
-        self.beg_hash = 31; self.end_hash = 71
-        self.beg_path = 72
+        self.ignore = {'Thumbs.db'} # ignore these files
+        self.path_max_sz = 100 # max length for file path display
+        
+        # ================ internal constants ===================
+        # pybup.txt line forma
+        self.beg_size = 0; self.end_size = 14 # size string (14)
+        self.beg_time = 15; self.end_time = 30 # time string (15)
+        self.beg_hash = 31; self.end_hash = 71 # sha1 string (40)
+        self.beg_path = 72 # path string
 
 g = gvars()
-
-# exclude these files in pybup.txt
-# add anything you want to ignore
-exclude = ('pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash')
 
 # copy folder recursively
 def copy_folder(src, dst):
@@ -65,9 +64,9 @@ def size_time_sha1_cwd(fname=None, pybup=None):
     flist = file_list_r('./')
     lines = []
     Nf = len(flist)
-    my_exclude = set(exclude)
+    ignore = set(g.ignore)
     if fname != None:
-        my_exclude.add(fname)
+        ignore.add(fname)
 
     # create dict from '[size] [time] [path]' to [sha1]
     if lazy_mode:
@@ -96,9 +95,9 @@ def size_time_sha1_cwd(fname=None, pybup=None):
         line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         str = '[{}/{}] {}'.format(i+1, Nf, f)
         if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
-        elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
+        elif len(str) < g.path_max_sz: str = str + ' '*round((g.path_max_sz-len(str))*1.5)
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
-        if os.path.split(f)[1] in my_exclude:
+        if os.path.split(f)[1] in ignore:
             continue
         lines.append(line)
     # sort accordig to '[size] [hash] [path]'
@@ -467,6 +466,7 @@ def backup1(folder):
 def main():
     if g.src[-1] != '/': g.src += '/'
     if g.dest[-1] != '/': g.dest += '/'
+    g.ignore.update({'pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash'})
 
     os.chdir(g.src)
     need_rerun = False
@@ -510,8 +510,8 @@ def main():
         print(''); print('#'*40)
         print('[{}/{}] {}'.format(ind+1, Nfolder, folder))
         print('#'*40); print('', flush=True)
-        if folder in g.ignore:
-            print('folder ignored by `ignore` param.')
+        if folder in g.ignore_folders:
+            print('folder ignored by `ignore_folders` param.')
             continue
         need_rerun = backup1(folder)
 
