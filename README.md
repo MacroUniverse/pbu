@@ -12,5 +12,6 @@ simple generic backup script
 # TODO
 * make `pybup` more like git! (without staging area)
 * `pybup status` to check source folder
-* `pybup commit` to commit to a new version (15-digit starting time)
-* `pybup fsck` to check backup folder (all of them)
+* `pybup commit` to commit to a new version (15-digit backup time)
+* `pybup fsck` to check backup folder (all versions)
+* use `.pybupignore` file similar to `.gitignore`

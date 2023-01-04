@@ -464,7 +464,7 @@ def backup1(folder):
 def main():
     if g.base_path[-1] != '/': g.base_path += '/'
     if g.dest[-1] != '/': g.dest += '/'
-    g.ignore.update({'pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash'})
+    g.ignore.update({'pybup.txt', 'pybup-old.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash'})
 
     os.chdir(g.base_path)
     need_rerun = False
