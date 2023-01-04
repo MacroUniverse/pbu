@@ -469,23 +469,23 @@ def main():
     os.chdir(g.base_path)
     need_rerun = False
 
-    if g.select:
-        folders = g.select
+    if g.folders:
+        folders = g.folders
     else:
         folders = next(os.walk('.'))[1]
         folders.sort()
 
-    # get folders with pbu.txt inside (or use `select` if not empty)
+    # get folders with pbu.txt inside (or use `folders` if not empty)
     print('folders to backup:\n'); i = 0
-    if g.select:
-        folders = g.select
+    if g.folders:
+        folders = g.folders
 
     while i < len(folders):
         folder = folders[i]
         if os.path.exists(folder + '/pbu.txt'):
             print('[{}] {}'.format(i+1, folder))
             i += 1
-        elif g.select:
+        elif g.folders:
             open(folder + '/pbu.txt', 'w').close()
             print('[{}] {}'.format(i+1, folder))
             i += 1
