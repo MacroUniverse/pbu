@@ -16,11 +16,11 @@ import natsort # natural sort folder name
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.base_path = '/mnt/d/' # directory to backup
+        self.base_path = '/mnt/c/Users/addis/' # directory to backup
         self.dest = '/mnt/q/' # backup directory to put in [folder.pbu]
         self.ver = '0' # version number
 
-        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
+        self.folders = ['Desktop'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db'} # ignored file names

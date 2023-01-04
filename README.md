@@ -10,8 +10,12 @@ simple generic backup script
 ![flowchart](pbu.png)
 
 # TODO
-* make `pbu` more like git! (without staging area)
+* `shutil.copystat` to preserve mata data as much as possible
+
+## make `pbu` more like git! (without staging area)
 * `pbu status` to check source folder
 * `pbu commit` to commit to a new version (15-digit backup time)
 * `pbu fsck` to check backup folder (all versions)
 * use `.pbuignore` file similar to `.gitignore`
+* `pub checkout` to checkout any version
+* `pub checkout-pbu` to checkout any version in the `.pbu` folder
