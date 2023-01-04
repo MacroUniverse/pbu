@@ -8,3 +8,9 @@ simple generic backup script
 * \[deprecated\] create an empty file `pybup-norehash` in the same folder with `pybup.txt` to let the script assume folder is up to date and do nochecking at all.
 
 ![flowchart](pybup.png)
+
+# TODO
+* make `pybup` more like git! (without staging area)
+* `pybup status` to check source folder
+* `pybup commit` to commit to a new version (15-digit starting time)
+* `pybup fsck` to check backup folder (all of them)
