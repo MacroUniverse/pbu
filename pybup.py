@@ -21,12 +21,12 @@ class gvars:
         self.ver = '0' # version number
 
         self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with pybup.txt)
-        self.ignore_folders = [] # ignore these folders.
         self.start = '' # skip until this folder.
+        self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db'} # ignored file names
         
         self.lazy_mode = True # hash a file only when size or time changed
-        self.debug_mode = False # won't pybup-nohash & check incremental backup
+        self.debug_mode = False # won't delete pybup-nohash, check incremental backup
         
         self.path_max_sz = 100 # max length for file path display
         
@@ -424,7 +424,8 @@ def backup1(folder):
             shutil.copyfile(path, dest2+path)
     
     # update previous pybup.txt
-    print('update previous pybup.txt')
+    print('update previous pybup.txt, the original renamed to pybup-old.txt')
+    os.rename(dest2 + 'pybup.txt', dest2 + 'pybup-old.txt')
     shutil.copyfile('pybup.txt', dest2 + 'pybup.txt')
     delta_remainder_warning = False
     if pybup_last:
