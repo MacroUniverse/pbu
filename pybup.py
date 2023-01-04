@@ -17,21 +17,21 @@ class gvars:
     def __init__(self):
         # ================== user params ========================
         self.base_path = '/mnt/d/' # directory to backup
-        self.dest = '/mnt/q/' # backup directory to put in [folder.pybup]
+        self.dest = '/mnt/q/' # backup directory to put in [folder.pbu]
         self.ver = '0' # version number
 
-        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with pybup.txt)
+        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with pbu.txt)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db'} # ignored file names
         
         self.lazy_mode = True # hash a file only when size or time changed
-        self.debug_mode = False # won't delete pybup-nohash, check incremental backup
+        self.debug_mode = False # won't delete pbu-nohash, check incremental backup
         
         self.path_max_sz = 100 # max length for file path display
         
         # ================ internal constants ===================
-        # pybup.txt line forma
+        # pbu.txt line forma
         self.beg_size = 0; self.end_size = 14 # size string (14)
         self.beg_time = 15; self.end_time = 30 # time string (15)
         self.beg_hash = 31; self.end_hash = 71 # sha1 string (40)
@@ -51,19 +51,19 @@ def copy_folder(src, dst):
             print('copy_folder() failed! you might not have permission!')
             exit(1)
 
-# utility for sorting pybup.txt (accordig to '[size] [hash] [path]')
-def pybup_line_cmp(line, line1):
+# utility for sorting pbu.txt (accordig to '[size] [hash] [path]')
+def pbu_line_cmp(line, line1):
     str = line[:g.beg_time] + line[g.end_time:]
     str1 = line1[:g.beg_time] + line1[g.end_time:]
     if str < str1: return -1
     if str1 < str: return 1
     return 0
 
-# generate pybup.txt
+# generate pbu.txt
 # write to file if fname provided, otherwise return list of lines
-# lazy mode: input the `pybup` (list of line) from `pybup.txt`
-def size_time_sha1_cwd(fname=None, pybup=None):
-    lazy_mode = pybup != None
+# lazy mode: input the `pbu` (list of line) from `pbu.txt`
+def size_time_sha1_cwd(fname=None, pbu=None):
+    lazy_mode = pbu != None
     flist = file_list_r('./')
     lines = []
     Nf = len(flist)
@@ -74,7 +74,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
     # create dict from '[size] [time] [path]' to [sha1]
     if lazy_mode:
         hash_dict = {}
-        for line in pybup:
+        for line in pbu:
             key = line[:g.end_time] + line[g.beg_path-1:]
             hash_dict[key] = line[g.beg_hash:g.end_hash]
 
@@ -104,7 +104,7 @@ def size_time_sha1_cwd(fname=None, pybup=None):
             continue
         lines.append(line)
     # sort accordig to '[size] [hash] [path]'
-    lines.sort(key=functools.cmp_to_key(pybup_line_cmp))
+    lines.sort(key=functools.cmp_to_key(pbu_line_cmp))
     print('', flush=True)
     if fname != None:
         f = open(fname, 'w')
@@ -113,88 +113,88 @@ def size_time_sha1_cwd(fname=None, pybup=None):
 
 # return True if review is needed, otherwise directory will be clean after return
 def check_cwd(lazy_mode):
-    if os.path.exists('pybup-new.txt'):
-        print('pending review, replace pybup.txt with pybup-new.txt when done.\n', flush=True)
+    if os.path.exists('pbu-new.txt'):
+        print('pending review, replace pbu.txt with pbu-new.txt when done.\n', flush=True)
         return True
-    if not os.path.exists('pybup.txt'):
-        print('pybup.txt not found, please don\'t delete it next time!')
+    if not os.path.exists('pbu.txt'):
+        print('pbu.txt not found, please don\'t delete it next time!')
         cwd = os.path.split(os.getcwd())[1]
         os.chdir('..')
         # in a backup version folder ?
-        if os.path.split(os.getcwd())[1][-6:] == '.pybup':
+        if os.path.split(os.getcwd())[1][-6:] == '.pbu':
             print('rename to [{}]'.format(cwd + '.broken'), flush=True)
             os.rename(cwd, cwd + '.broken')
             os.chdir(cwd + '.broken')
             print('hashing...', flush=True)
-            size_time_sha1_cwd('pybup-new.txt')
-            print('pending review, if everything ok, delete ".broken" from folder name and rename pybup-new.txt to pybup.txt.\n', flush=True)
+            size_time_sha1_cwd('pbu-new.txt')
+            print('pending review, if everything ok, delete ".broken" from folder name and rename pbu-new.txt to pbu.txt.\n', flush=True)
             return True
         else:
             os.chdir(cwd)
             print('hashing...', flush=True)
-            size_time_sha1_cwd('pybup.txt')
+            size_time_sha1_cwd('pbu.txt')
             return False
-    elif os.stat('pybup.txt').st_size == 0:
-        # pybup.txt is empty
+    elif os.stat('pbu.txt').st_size == 0:
+        # pbu.txt is empty
         print('hashing...', flush=True)
-        size_time_sha1_cwd('pybup.txt')
+        size_time_sha1_cwd('pbu.txt')
         return False
-    elif os.path.exists('pybup-norehash'):
-        # pybup.txt not empty, norehash
-        print("pybup-norehash exist, assuming no change or corruption!", flush=True)
+    elif os.path.exists('pbu-norehash'):
+        # pbu.txt not empty, norehash
+        print("pbu-norehash exist, assuming no change or corruption!", flush=True)
         if not g.debug_mode:
-            os.remove('pybup-norehash')
+            os.remove('pbu-norehash')
         return False
-    else: # pybup.txt non-empty, rehash
-        f = open('pybup.txt', 'r')
-        pybup = f.read().splitlines(); f.close()
+    else: # pbu.txt non-empty, rehash
+        f = open('pbu.txt', 'r')
+        pbu = f.read().splitlines(); f.close()
         if lazy_mode:
             print('rehashing (lazy mode)...', flush=True)
-            pybup_new = size_time_sha1_cwd(None, pybup)
+            pbu_new = size_time_sha1_cwd(None, pbu)
         else:
             print('rehashing...', flush=True)
-            pybup_new = size_time_sha1_cwd(None)
+            pbu_new = size_time_sha1_cwd(None)
         
-        if pybup_changed(pybup, pybup_new): # has change
-            f = open('pybup-new.txt', 'w')
-            f.write('\n'.join(pybup_new) + '\n'); f.close()
-            f = open('pybup-diff.txt', 'w')
+        if pbu_changed(pbu, pbu_new): # has change
+            f = open('pbu-new.txt', 'w')
+            f.write('\n'.join(pbu_new) + '\n'); f.close()
+            f = open('pbu-diff.txt', 'w')
             f.write(diff_cwd()); f.close()
-            print('folder has change, review pybup-diff.txt, if everything ok, replace pybup.txt with pybup-new.txt, delete pybup-diff.txt, and add pybup-norehash\n', flush=True)
+            print('folder has change, review pbu-diff.txt, if everything ok, replace pbu.txt with pbu-new.txt, delete pbu-diff.txt, and add pbu-norehash\n', flush=True)
             return True
         else:
             print('no change or corruption!', flush=True)
-            f = open('pybup.txt', 'w')
-            f.write('\n'.join(pybup_new) + '\n'); f.close()
+            f = open('pbu.txt', 'w')
+            f.write('\n'.join(pbu_new) + '\n'); f.close()
             return False
 
-# show difference between pybup-new.txt and pybup.txt of current folder
+# show difference between pbu-new.txt and pbu.txt of current folder
 def diff_cwd():
-    f = open('pybup.txt', 'r')
-    pybup = f.read().splitlines(); f.close()
-    f = open('pybup-new.txt', 'r')
-    pybup_new = f.read().splitlines(); f.close()
+    f = open('pbu.txt', 'r')
+    pbu = f.read().splitlines(); f.close()
+    f = open('pbu-new.txt', 'r')
+    pbu_new = f.read().splitlines(); f.close()
     i = 0; j = 0
     output = []
     while 1:
-        if i == len(pybup):
-            for j in range(j, len(pybup_new)):
-                output.append(pybup_new[j] + ' [new]')
+        if i == len(pbu):
+            for j in range(j, len(pbu_new)):
+                output.append(pbu_new[j] + ' [new]')
             break
-        elif j == len(pybup_new):
-            for i in range(i, len(pybup)):
-                output.append(pybup[i] + ' [deleted]')
+        elif j == len(pbu_new):
+            for i in range(i, len(pbu)):
+                output.append(pbu[i] + ' [deleted]')
             break
-        line = pybup[i]; line_new = pybup_new[j]
+        line = pbu[i]; line_new = pbu_new[j]
         str = line[:g.end_size] + ' ' + line[g.beg_hash:]
         str_new = line_new[:g.end_size] + ' ' + line_new[g.beg_hash:]
         if str == str_new:
             i += 1; j += 1
         elif str < str_new:
-            output.append(pybup[i] + ' [deleted]')
+            output.append(pbu[i] + ' [deleted]')
             i += 1
         else: # str_new < str
-            output.append(pybup_new[j] + ' [new]')
+            output.append(pbu_new[j] + ' [new]')
             j += 1
     output.sort()
     return '\n'.join(output) + '\n'
@@ -253,29 +253,29 @@ def shell_cmd(*cmd):
         sys.exit(1)
     return output.decode()
 
-# check if `pybup1` is different from `pybup` (ignore time)
-def pybup_changed(pybup, pybup1):
-    if len(pybup) != len(pybup1):
+# check if `pbu1` is different from `pbu` (ignore time)
+def pbu_changed(pbu, pbu1):
+    if len(pbu) != len(pbu1):
         return True
-    for i in range(len(pybup)):
-        line = pybup[i]; line1 = pybup1[i]
+    for i in range(len(pbu)):
+        line = pbu[i]; line1 = pbu1[i]
         str = line[:g.end_size] + ' ' + line[g.beg_hash:]
         str1 = line1[:g.end_size] + ' ' + line1[g.beg_hash:]
         if str != str1:
             return True
     return False
 
-# check if `pybup1` has only added files to `pybup` but not deleted or modified
+# check if `pbu1` has only added files to `pbu` but not deleted or modified
 # [return list of added file paths] if only added files
 # [return empty list] if nothing changed (ignore time)
 # [return -1] otherwise (more complicated change)
-def pybup_add_only(pybup, pybup1):
+def pbu_add_only(pbu, pbu1):
     i = 0; j = 0
-    N = len(pybup); N1 = len(pybup1)
+    N = len(pbu); N1 = len(pbu1)
     if N > N1: return -1
     new_file_list = []
     while i < N and j < N1:
-        line = pybup[i]; line1 = pybup1[j]
+        line = pbu[i]; line1 = pbu1[j]
         str = line[:g.end_size] + ' ' + line[g.beg_hash:]
         str1 = line1[:g.end_size] + ' ' + line1[g.beg_hash:]
         if str == str1:
@@ -294,7 +294,7 @@ def backup1(folder):
     os.chdir(g.base_path)
 
     folder_ver = folder + '.v' + g.ver
-    dest1 = g.dest + folder + '.pybup/'
+    dest1 = g.dest + folder + '.pbu/'
     dest2 = dest1 + folder_ver + '/'
     
     # === search latest backup ===
@@ -323,17 +323,17 @@ def backup1(folder):
         print('checking ['+folder_ver+']'); print('-'*40, flush=True)
         if (check_cwd(g.lazy_mode)):
             return True
-        # compare 2 pybup.txt
-        f = open(dest2 + 'pybup.txt', 'r')
-        pybup_dest = f.read().splitlines(); f.close()
-        f = open(g.base_path + folder + '/pybup.txt', 'r')
-        pybup = f.read().splitlines(); f.close()
-        if (pybup_changed(pybup, pybup_dest)):
-            print('pybup.txt differs from source! please use a new version number and run again.')
+        # compare 2 pbu.txt
+        f = open(dest2 + 'pbu.txt', 'r')
+        pbu_dest = f.read().splitlines(); f.close()
+        f = open(g.base_path + folder + '/pbu.txt', 'r')
+        pbu = f.read().splitlines(); f.close()
+        if (pbu_changed(pbu, pbu_dest)):
+            print('pbu.txt differs from source! please use a new version number and run again.')
             print('', flush=True)
             return True
         else:
-            print('pybup.txt identical from ['+folder+'].\n');
+            print('pbu.txt identical from ['+folder+'].\n');
             print('everything ok!\n', flush=True)
             return False
     elif not dest2_last:
@@ -350,12 +350,12 @@ def backup1(folder):
     print('checking ['+folder_ver_last+']'); print('-'*40, flush=True)
     if (check_cwd(g.lazy_mode)):
         return True
-    # compare 2 pybup.txt
-    f = open(dest2_last + 'pybup.txt', 'r')
-    pybup_dest = f.read().splitlines(); f.close()
-    f = open(g.base_path + folder + '/pybup.txt', 'r')
-    pybup = f.read().splitlines(); f.close()
-    cp_inds = pybup_add_only(pybup_dest, pybup)
+    # compare 2 pbu.txt
+    f = open(dest2_last + 'pbu.txt', 'r')
+    pbu_dest = f.read().splitlines(); f.close()
+    f = open(g.base_path + folder + '/pbu.txt', 'r')
+    pbu = f.read().splitlines(); f.close()
+    cp_inds = pbu_add_only(pbu_dest, pbu)
     if isinstance(cp_inds, list):
         # no change or only added file(s)
         # can rename version directly
@@ -369,7 +369,7 @@ def backup1(folder):
         Ncp = len(cp_inds)
         for i in range(Ncp):
             ind = cp_inds[i]
-            path = pybup[ind][g.beg_path:]
+            path = pbu[ind][g.beg_path:]
             str = '[{}/{}] {}'.format(i+1, Ncp, path)
             if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
             elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
@@ -379,29 +379,29 @@ def backup1(folder):
             if not os.path.exists(dir):
                 os.makedirs(dir)
             shutil.copyfile(path, dest2+path)
-            pybup_dest.append(pybup[ind])
-        print(''); print('update pybup.txt')
-        pybup_dest.sort(key=functools.cmp_to_key(pybup_line_cmp))
-        f = open(dest2 + 'pybup.txt', 'w')
-        f.write('\n'.join(pybup_dest) + '\n'); f.close(); print('')
+            pbu_dest.append(pbu[ind])
+        print(''); print('update pbu.txt')
+        pbu_dest.sort(key=functools.cmp_to_key(pbu_line_cmp))
+        f = open(dest2 + 'pbu.txt', 'w')
+        f.write('\n'.join(pbu_dest) + '\n'); f.close(); print('')
         return False
     else:
         print('cannot rename.\n'.format(folder), flush=True)
 
     # --- incremental backup ---
-    # pybup must be sorted accordig to '[size] [hash]'
+    # pbu must be sorted accordig to '[size] [hash]'
     print('---- starting incremental backup ----', flush=True)
-    f = open(dest2_last + 'pybup.txt', 'r')
-    pybup_last = f.read().splitlines(); f.close()
+    f = open(dest2_last + 'pbu.txt', 'r')
+    pbu_last = f.read().splitlines(); f.close()
     os.chdir(g.base_path + folder)
-    f = open('pybup.txt', 'r')
-    pybup = f.read().splitlines(); f.close()
+    f = open('pbu.txt', 'r')
+    pbu = f.read().splitlines(); f.close()
     rename_count = 0; i = j = 0
     
-    Nf = len(pybup)
+    Nf = len(pbu)
     for i in range(Nf):
-        size_hash = pybup[i][g.beg_size:g.end_size+1] + pybup[i][g.beg_hash:g.end_hash]
-        path = pybup[i][g.beg_path:]
+        size_hash = pbu[i][g.beg_size:g.end_size+1] + pbu[i][g.beg_hash:g.end_hash]
+        path = pbu[i][g.beg_path:]
         print('[{}/{}]          \r'.format(i+1, Nf), end="", flush=True)
         # ensure dest path exist
         dir = os.path.split(dest2+path)[0]
@@ -409,28 +409,28 @@ def backup1(folder):
             os.makedirs(dir)
         # try to match a previous backup file
         match = False
-        while j < len(pybup_last):
-            size_hash_last = pybup_last[j][g.beg_size:g.end_size+1] + pybup_last[j][g.beg_hash:g.end_hash]
+        while j < len(pbu_last):
+            size_hash_last = pbu_last[j][g.beg_size:g.end_size+1] + pbu_last[j][g.beg_hash:g.end_hash]
             if size_hash_last > size_hash:
                 break
             elif size_hash_last == size_hash:
-                path_last = pybup_last[j][g.beg_path:]
+                path_last = pbu_last[j][g.beg_path:]
                 os.rename(dest2_last + path_last, dest2+path)
                 rename_count += 1; match = True
-                del pybup_last[j]
+                del pbu_last[j]
                 break
             j += 1
         if not match: # no match, just copy
             shutil.copyfile(path, dest2+path)
     
-    # update previous pybup.txt
-    print('update previous pybup.txt, the original renamed to pybup-old.txt')
-    os.rename(dest2 + 'pybup.txt', dest2 + 'pybup-old.txt')
-    shutil.copyfile('pybup.txt', dest2 + 'pybup.txt')
+    # update previous pbu.txt
+    print('update previous pbu.txt, the original renamed to pbu-old.txt')
+    os.rename(dest2 + 'pbu.txt', dest2 + 'pbu-old.txt')
+    shutil.copyfile('pbu.txt', dest2 + 'pbu.txt')
     delta_remainder_warning = False
-    if pybup_last:
-        f = open(dest2_last + 'pybup.txt', 'w')
-        f.write('\n'.join(pybup_last) + '\n')
+    if pbu_last:
+        f = open(dest2_last + 'pbu.txt', 'w')
+        f.write('\n'.join(pbu_last) + '\n')
         f.close()
     else:
         print('internal warning: incremental backup should not happen, the backup folder should have been renamed to new version.')
@@ -443,7 +443,7 @@ def backup1(folder):
     rm_empty_folders(dest2_last, True)
     
     # summary
-    print('total files:', len(pybup))
+    print('total files:', len(pbu))
     print('files moved from previous version:', rename_count, '\n', flush=True)
     
     need_rerun = False
@@ -464,7 +464,7 @@ def backup1(folder):
 def main():
     if g.base_path[-1] != '/': g.base_path += '/'
     if g.dest[-1] != '/': g.dest += '/'
-    g.ignore.update({'pybup.txt', 'pybup-old.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash'})
+    g.ignore.update({'pbu.txt', 'pbu-old.txt', 'pbu-new.txt', 'pbu-diff.txt', 'pbu-norehash'})
 
     os.chdir(g.base_path)
     need_rerun = False
@@ -475,18 +475,18 @@ def main():
         folders = next(os.walk('.'))[1]
         folders.sort()
 
-    # get folders with pybup.txt inside (or use `select` if not empty)
+    # get folders with pbu.txt inside (or use `select` if not empty)
     print('folders to backup:\n'); i = 0
     if g.select:
         folders = g.select
 
     while i < len(folders):
         folder = folders[i]
-        if os.path.exists(folder + '/pybup.txt'):
+        if os.path.exists(folder + '/pbu.txt'):
             print('[{}] {}'.format(i+1, folder))
             i += 1
         elif g.select:
-            open(folder + '/pybup.txt', 'w').close()
+            open(folder + '/pbu.txt', 'w').close()
             print('[{}] {}'.format(i+1, folder))
             i += 1
         else:
