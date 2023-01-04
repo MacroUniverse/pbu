@@ -16,15 +16,18 @@ import natsort # natural sort folder name
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.src = '/mnt/d/' # directory to backup
-        self.dest = '/mnt/q/' # backup directory
+        self.base_path = '/mnt/d/' # directory to backup
+        self.dest = '/mnt/q/' # backup directory to put in [folder.pybup]
         self.ver = '0' # version number
-        self.select = [] # select folders to backup (even without pybup.txt)
-        self.ignore_folders = [] # ignore these folders
-        self.start = '' # skip until this folder
+
+        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with pybup.txt)
+        self.ignore_folders = [] # ignore these folders.
+        self.start = '' # skip until this folder.
+        self.ignore = {'Thumbs.db'} # ignored file names
+        
         self.lazy_mode = True # hash a file only when size or time changed
         self.debug_mode = False # won't pybup-nohash & check incremental backup
-        self.ignore = {'Thumbs.db'} # ignore these files
+        
         self.path_max_sz = 100 # max length for file path display
         
         # ================ internal constants ===================
@@ -291,7 +294,7 @@ def pybup_add_only(pybup, pybup1):
 
 # backup or check a single folder
 def backup1(folder):
-    os.chdir(g.src)
+    os.chdir(g.base_path)
 
     folder_ver = folder + '.v' + g.ver
     dest1 = g.dest + folder + '.pybup/'
@@ -313,7 +316,7 @@ def backup1(folder):
 
     # === check source folder ===
     print('checking', '['+folder+']'); print('-'*40, flush=True)
-    os.chdir(g.src + folder)
+    os.chdir(g.base_path + folder)
     if (check_cwd(g.lazy_mode)):
         # `folder` has change or corruption
         return True
@@ -326,7 +329,7 @@ def backup1(folder):
         # compare 2 pybup.txt
         f = open(dest2 + 'pybup.txt', 'r')
         pybup_dest = f.read().splitlines(); f.close()
-        f = open(g.src + folder + '/pybup.txt', 'r')
+        f = open(g.base_path + folder + '/pybup.txt', 'r')
         pybup = f.read().splitlines(); f.close()
         if (pybup_changed(pybup, pybup_dest)):
             print('pybup.txt differs from source! please use a new version number and run again.')
@@ -340,7 +343,7 @@ def backup1(folder):
         # no previous backup, direct copy
         if dest2_last == '':
             print('no previous backup, copying...', flush=True)
-            os.chdir(g.src)
+            os.chdir(g.base_path)
             copy_folder(folder, dest2)
             print('', flush=True)
             return False
@@ -353,7 +356,7 @@ def backup1(folder):
     # compare 2 pybup.txt
     f = open(dest2_last + 'pybup.txt', 'r')
     pybup_dest = f.read().splitlines(); f.close()
-    f = open(g.src + folder + '/pybup.txt', 'r')
+    f = open(g.base_path + folder + '/pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
     cp_inds = pybup_add_only(pybup_dest, pybup)
     if isinstance(cp_inds, list):
@@ -365,7 +368,7 @@ def backup1(folder):
             return False
         # cp_inds not empty
         print('copying new files to [{}]...'.format(folder_ver))
-        os.chdir(g.src + folder)
+        os.chdir(g.base_path + folder)
         Ncp = len(cp_inds)
         for i in range(Ncp):
             ind = cp_inds[i]
@@ -394,7 +397,7 @@ def backup1(folder):
     print('---- starting incremental backup ----', flush=True)
     f = open(dest2_last + 'pybup.txt', 'r')
     pybup_last = f.read().splitlines(); f.close()
-    os.chdir(g.src + folder)
+    os.chdir(g.base_path + folder)
     f = open('pybup.txt', 'r')
     pybup = f.read().splitlines(); f.close()
     rename_count = 0; i = j = 0
@@ -464,11 +467,11 @@ def backup1(folder):
 ## =========== main() program ==============
 
 def main():
-    if g.src[-1] != '/': g.src += '/'
+    if g.base_path[-1] != '/': g.base_path += '/'
     if g.dest[-1] != '/': g.dest += '/'
     g.ignore.update({'pybup.txt', 'pybup-new.txt', 'pybup-diff.txt', 'pybup-norehash'})
 
-    os.chdir(g.src)
+    os.chdir(g.base_path)
     need_rerun = False
 
     if g.select:
