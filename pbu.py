@@ -156,7 +156,7 @@ def check_cwd(lazy_mode):
         f = open('.pbu', 'r')
         pbu = f.read().splitlines(); f.close()
         if lazy_mode:
-            print('rehashing (lazy mode)...', flush=True)
+            print('lazy mode (size and time)...', flush=True)
             pbu_new = size_time_sha1_cwd(None, pbu)
         else:
             print('rehashing...', flush=True)
