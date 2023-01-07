@@ -11,6 +11,7 @@ simple generic backup script
 
 ## TODO: make `pbu` more like git! (without staging area)
 * `pbu status` to check source folder
+* detect renamed files (path and name change without sha1 change)
 * `pbu commit` to commit to a new version (15-digit backup time)
 * `pbu fsck` to check backup folder (all versions)
 * use `.pbuignore` file similar to `.gitignore`

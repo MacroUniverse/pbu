@@ -186,11 +186,11 @@ def diff_cwd():
     while 1:
         if i == len(pbu):
             for j in range(j, len(pbu_new)):
-                output.append(pbu_new[j] + ' [new]')
+                output.append('[new]     ' + pbu_new[j])
             break
         elif j == len(pbu_new):
             for i in range(i, len(pbu)):
-                output.append(pbu[i] + ' [deleted]')
+                output.append('[deleted] ' + pbu[i])
             break
         line = pbu[i]; line_new = pbu_new[j]
         str = line[:g.end_size] + ' ' + line[g.beg_hash:]
@@ -198,10 +198,10 @@ def diff_cwd():
         if str == str_new:
             i += 1; j += 1
         elif str < str_new:
-            output.append(pbu[i] + ' [deleted]')
+            output.append('[deleted] ' + pbu[i])
             i += 1
         else: # str_new < str
-            output.append(pbu_new[j] + ' [new]')
+            output.append('[new]     ' + pbu_new[j])
             j += 1
     output.sort()
     return '\n'.join(output) + '\n'
