@@ -422,11 +422,11 @@ def backup1(folder):
             j += 1
         if not match: # no match, just copy
             shutil.copyfile(path, dest2+path)
+    shutil.copyfile('.pbu', dest2 + '.pbu')
     
     # update previous .pbu
-    print('update previous .pbu, the original renamed to .pbu-old')
-    os.rename(dest2 + '.pbu', dest2 + '.pbu-old')
-    shutil.copyfile('.pbu', dest2 + '.pbu')
+    print('update .pbu in previous version, rename the original to .pbu-old')    
+    os.rename(dest2_last + '.pbu', dest2_last + '.pbu-old')
     delta_remainder_warning = False
     if pbu_last:
         f = open(dest2_last + '.pbu', 'w')
