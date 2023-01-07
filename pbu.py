@@ -95,14 +95,13 @@ def size_time_sha1_cwd(fname=None, pbu=None):
             except:
                 sha1str = sha1file(f)
                 print('(not lazy) ', end="")
-        line = size_str + ' ' + time_str + ' ' + sha1str + ' ' + f
         str = '[{}/{}] {}'.format(i+1, Nf, f)
         if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
         elif len(str) < g.path_max_sz: str = str + ' '*round((g.path_max_sz-len(str))*1.5)
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
         if os.path.split(f)[1] in ignore:
             continue
-        lines.append(line)
+        lines.append(size_str + ' ' + time_str + ' ' + sha1str + ' ' + f)
     # sort accordig to '[size] [hash] [path]'
     lines.sort(key=functools.cmp_to_key(pbu_line_cmp))
     print('', flush=True)
@@ -378,7 +377,7 @@ def backup1(folder):
             dir = os.path.split(dest2+path)[0]
             if not os.path.exists(dir):
                 os.makedirs(dir)
-            shutil.copyfile(path, dest2+path)
+            shutil.copy2(path, dest2+path)
             pbu_dest.append(pbu[ind])
         print(''); print('update .pbu')
         pbu_dest.sort(key=functools.cmp_to_key(pbu_line_cmp))
@@ -387,6 +386,7 @@ def backup1(folder):
         return False
     else:
         print('cannot rename.\n'.format(folder), flush=True)
+        print('debug: cp_inds =', cp_inds)
 
     # --- incremental backup ---
     # pbu must be sorted accordig to '[size] [hash]'
@@ -421,8 +421,8 @@ def backup1(folder):
                 break
             j += 1
         if not match: # no match, just copy
-            shutil.copyfile(path, dest2+path)
-    shutil.copyfile('.pbu', dest2 + '.pbu')
+            shutil.copy2(path, dest2+path)
+    shutil.copy2('.pbu', dest2 + '.pbu')
     
     # update previous .pbu
     print('update .pbu in previous version, rename the original to .pbu-old')    

@@ -9,10 +9,7 @@ simple generic backup script
 
 ![flowchart](pbu.png)
 
-# TODO
-* `shutil.copystat` to preserve mata data as much as possible
-
-## make `pbu` more like git! (without staging area)
+## TODO: make `pbu` more like git! (without staging area)
 * `pbu status` to check source folder
 * `pbu commit` to commit to a new version (15-digit backup time)
 * `pbu fsck` to check backup folder (all versions)
