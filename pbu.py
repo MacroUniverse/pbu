@@ -43,10 +43,11 @@ g = gvars()
 # copy folder recursively
 def copy_folder(src, dst):
     try:
-        shutil.copytree(src, dst)
+        # will preserve metadata
+        shutil.copytree(src, dst, symlinks=True) # don't follow symlinks
     except OSError as exc: # python >2.5
         if exc.errno in (errno.ENOTDIR, errno.EINVAL):
-            shutil.copy2(src, dst)
+            shutil.copy2(src, dst) # will preserve metadata
         else:
             # raise
             print('copy_folder() failed! you might not have permission!')
