@@ -23,7 +23,8 @@ class gvars:
         self.folders = ['Desktop'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
-        self.ignore = {'Thumbs.db'} # ignored file names
+        self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
+        self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignore file extensions
         
         self.lazy_mode = True # hash a file only when size or time changed
         self.debug_mode = False # won't delete pbu-nohash, check incremental backup
@@ -45,7 +46,7 @@ def copy_folder(src, dst):
         shutil.copytree(src, dst)
     except OSError as exc: # python >2.5
         if exc.errno in (errno.ENOTDIR, errno.EINVAL):
-            shutil.copy(src, dst)
+            shutil.copy2(src, dst)
         else:
             # raise
             print('copy_folder() failed! you might not have permission!')
@@ -82,6 +83,14 @@ def size_time_sha1_cwd(fname=None, pbu=None):
         f = flist[i][2:]
         if not os.path.exists(f): # deleted just now
             continue
+        name = os.path.split(f)[1]
+        if name in ignore:
+            continue
+        f_ignored = False
+        for ext in g.ignore_ext:
+            if name[-len(ext):] == ext:
+                f_ignored = True; break
+        if f_ignored: continue
         # get size and time
         size_str = '%014d' % os.stat(f).st_size
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
@@ -99,8 +108,6 @@ def size_time_sha1_cwd(fname=None, pbu=None):
         if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
         elif len(str) < g.path_max_sz: str = str + ' '*round((g.path_max_sz-len(str))*1.5)
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
-        if os.path.split(f)[1] in ignore:
-            continue
         lines.append(size_str + ' ' + time_str + ' ' + sha1str + ' ' + f)
     # sort accordig to '[size] [hash] [path]'
     lines.sort(key=functools.cmp_to_key(pbu_line_cmp))
@@ -202,7 +209,10 @@ def diff_cwd():
 # use 1MiB buffer size fot big file
 def sha1file(fname, buff_sz=1024*1024):
     if os.path.getsize(fname) <= buff_sz:
-        f = open(fname, 'rb')
+        try:
+            f = open(fname, 'rb')
+        except PermissionError:
+            print('no permission to read file:', fname); exit(1)
         data = f.read()
         sha1 = hashlib.sha1(data)
     else:
