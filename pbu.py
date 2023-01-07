@@ -412,7 +412,10 @@ def backup1(folder):
     for i in range(Nf):
         size_hash = pbu[i][g.beg_size:g.end_size+1] + pbu[i][g.beg_hash:g.end_hash]
         path = pbu[i][g.beg_path:]
-        print('[{}/{}]          \r'.format(i+1, Nf), end="", flush=True)
+        str = '[{}/{}] {}'.format(i+1, Ncp, path)
+        if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
+        elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
+        print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
         # ensure dest path exist
         dir = os.path.split(dest2+path)[0]
         if not os.path.exists(dir):
