@@ -16,11 +16,11 @@ import natsort # natural sort folder name
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.base_path = '/mnt/c/Users/addis/' # directory to backup
+        self.base_path = '/mnt/p/' # directory to backup
         self.dest = '/mnt/q/' # backup directory to put in [folder.pbu]
         self.ver = '0' # version number
 
-        self.folders = ['Desktop'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
+        self.folders = ['myfolder'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
@@ -171,7 +171,7 @@ def check_cwd(lazy_mode):
             return True
         else:
             print('no change or corruption!', flush=True)
-            f = open('.pbu', 'w')
+            f = open('.pbu', 'w') # time might change, update.
             f.write('\n'.join(pbu_new) + '\n'); f.close()
             return False
 
@@ -397,7 +397,6 @@ def backup1(folder):
         return False
     else:
         print('cannot rename.\n'.format(folder), flush=True)
-        print('debug: cp_inds =', cp_inds)
 
     # --- incremental backup ---
     # pbu must be sorted accordig to '[size] [hash]'
@@ -427,13 +426,15 @@ def backup1(folder):
             elif size_hash_last == size_hash:
                 path_last = pbu_last[j][g.beg_path:]
                 os.rename(dest2_last + path_last, dest2+path)
+                pbu[i] = pbu[i][:g.beg_time] + pbu_last[j][g.beg_time:g.end_time] + pbu[i][g.end_time:]
                 rename_count += 1; match = True
                 del pbu_last[j]
                 break
             j += 1
         if not match: # no match, just copy
             shutil.copy2(path, dest2+path)
-    shutil.copy2('.pbu', dest2 + '.pbu')
+    f = open(dest2 + '.pbu', 'w')
+    f.write('\n'.join(pbu) + '\n'); f.close()
     
     # update previous .pbu
     print('update .pbu in previous version, rename the original to .pbu-old')    
@@ -441,8 +442,7 @@ def backup1(folder):
     delta_remainder_warning = False
     if pbu_last:
         f = open(dest2_last + '.pbu', 'w')
-        f.write('\n'.join(pbu_last) + '\n')
-        f.close()
+        f.write('\n'.join(pbu_last) + '\n'); f.close()
     else:
         print('internal warning: incremental backup should not happen, the backup folder should have been renamed to new version.')
         print('this is only an optimization warning, your backup is ok!')
