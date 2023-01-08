@@ -296,6 +296,8 @@ def pbu_add_only(pbu, pbu1):
         else: # str < str1
             return -1
     if i == N:
+        for j in range(j, N1):
+            new_file_list.append(j)
         return new_file_list
     return -1
 
