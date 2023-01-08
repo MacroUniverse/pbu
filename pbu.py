@@ -412,7 +412,7 @@ def backup1(folder):
     for i in range(Nf):
         size_hash = pbu[i][g.beg_size:g.end_size+1] + pbu[i][g.beg_hash:g.end_hash]
         path = pbu[i][g.beg_path:]
-        str = '[{}/{}] {}'.format(i+1, Ncp, path)
+        str = '[{}/{}] {}'.format(i+1, Nf, path)
         if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
         elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
