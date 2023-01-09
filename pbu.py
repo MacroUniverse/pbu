@@ -25,7 +25,7 @@ class gvars:
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
         self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignore file extensions
-        
+
         self.lazy_mode = True # hash a file only when size or time changed
         self.debug_mode = False # won't delete pbu-nohash, check incremental backup
         
@@ -167,7 +167,9 @@ def check_cwd(lazy_mode):
             f.write('\n'.join(pbu_new) + '\n'); f.close()
             f = open('.pbu-diff', 'w')
             f.write(diff_cwd()); f.close()
-            print('folder has change, review .pbu-diff, if everything ok, replace .pbu with .pbu-new, delete .pbu-diff, and add pbu-norehash\n', flush=True)
+            print('folder has change, review .pbu-diff, if everything ok, replace .pbu with .pbu-new, delete .pbu-diff, and add pbu-norehash')
+            print('for a more human readable form of .pbu-diff, you can also use:')
+            print('`git diff --no-index --word-diff .pbu .pbu-new`\n', flush=True)
             return True
         else:
             print('no change or corruption!', flush=True)
