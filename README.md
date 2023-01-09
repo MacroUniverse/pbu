@@ -9,7 +9,10 @@ simple generic backup script
 
 ![flowchart](pbu.png)
 
-## TODO: make `pbu` more like git! (without staging area)
+# TODO
+* should keep `.pbu-old` for incremental backup that only adds new files
+
+## make `pbu` more like git! (without staging area)
 * `pbu status` to check source folder
 * detect renamed files (path and name change without sha1 change)
 * `pbu commit` to commit to a new version (15-digit backup time)
