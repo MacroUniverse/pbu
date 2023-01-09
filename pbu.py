@@ -61,6 +61,13 @@ def pbu_line_cmp(line, line1):
     if str1 < str: return 1
     return 0
 
+def pbu_path_p10_cmp(line, line1):
+    str = line[g.beg_path+10:]
+    str1 = line1[g.beg_path+10:]
+    if str < str1: return -1
+    if str1 < str: return 1
+    return 0
+
 # generate .pbu
 # return list of lines of in `.pbu` format
 # write to file if fname provided
@@ -201,17 +208,25 @@ def diff_cwd():
         if str == str_new:
             i += 1; j += 1
         elif str < str_new:
-            if output[-1][:5] == '[new]' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
-                output[-1] = '[renamed] ' + output[-1][10:]
+            if output[-1][:10] == '[new]     ' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
+                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[10:]
             else:
                 output.append('[deleted] ' + pbu[i])
             i += 1
         else: # str_new < str
-            if output[-1][:9] == '[deleted]' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
-                output[-1] = '[renamed] ' + output[-1][10:]
+            if output[-1][:10] == '[deleted] ' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
+                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[10:]
             else:
                 output.append('[new]     ' + pbu_new[j])
             j += 1
+    # find out hash change for files with same paths
+    output.sort(key=functools.cmp_to_key(pbu_path_p10_cmp))
+    i = 0
+    while i < len(output)-1:
+        if output[i][g.beg_path+10:] == output[i+1][g.beg_path+10:]:
+            output[i] = '[changed] ' + output[i][10:]
+            del output[i+1]
+        i += 1
     return '\n'.join(output) + '\n'
 
 # sha1sum of a file
