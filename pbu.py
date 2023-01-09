@@ -209,13 +209,13 @@ def diff_cwd():
             i += 1; j += 1
         elif str < str_new:
             if output[-1][:10] == '[new]     ' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
-                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[10:]
+                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[i][10:]
             else:
                 output.append('[deleted] ' + pbu[i])
             i += 1
         else: # str_new < str
             if output[-1][:10] == '[deleted] ' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
-                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[10:]
+                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[i][10:]
             else:
                 output.append('[new]     ' + pbu_new[j])
             j += 1
