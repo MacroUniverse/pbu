@@ -62,7 +62,8 @@ def pbu_line_cmp(line, line1):
     return 0
 
 # generate .pbu
-# write to file if fname provided, otherwise return list of lines
+# return list of lines of in `.pbu` format
+# write to file if fname provided
 # lazy mode: input the `pbu` (list of line) from `.pbu`
 def size_time_sha1_cwd(fname=None, pbu=None):
     lazy_mode = pbu != None
@@ -160,7 +161,7 @@ def check_cwd(lazy_mode):
             pbu_new = size_time_sha1_cwd(None, pbu)
         else:
             print('rehashing...', flush=True)
-            pbu_new = size_time_sha1_cwd(None)
+            pbu_new = size_time_sha1_cwd()
         
         if pbu_changed(pbu, pbu_new): # has change
             f = open('.pbu-new', 'w')
@@ -200,12 +201,17 @@ def diff_cwd():
         if str == str_new:
             i += 1; j += 1
         elif str < str_new:
-            output.append('[deleted] ' + pbu[i])
+            if output[-1][:5] == '[new]' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
+                output[-1] = '[renamed] ' + output[-1][10:]
+            else:
+                output.append('[deleted] ' + pbu[i])
             i += 1
         else: # str_new < str
-            output.append('[new]     ' + pbu_new[j])
+            if output[-1][:9] == '[deleted]' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
+                output[-1] = '[renamed] ' + output[-1][10:]
+            else:
+                output.append('[new]     ' + pbu_new[j])
             j += 1
-    output.sort()
     return '\n'.join(output) + '\n'
 
 # sha1sum of a file
