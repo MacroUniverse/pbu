@@ -211,6 +211,7 @@ def diff_cwd():
         elif line[g.beg_hash:g.end_hash] == line_new[g.beg_hash:g.end_hash]:
             # same hash, different path
             output.append('[moved]   ' + line + ' -> ' + line_new[g.beg_path:])
+            i += 1; j += 1
         elif str < str_new:
             output.append('[deleted] ' + line)
             i += 1
