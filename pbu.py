@@ -208,17 +208,14 @@ def diff_cwd():
         str_new = line_new[:g.end_size] + ' ' + line_new[g.beg_hash:]
         if str == str_new:
             i += 1; j += 1
+        elif line[g.beg_hash:g.end_hash] == line_new[g.beg_hash:g.end_hash]:
+            # same hash, different path
+            output.append('[moved]   ' + line + ' -> ' + line_new[g.beg_path:])
         elif str < str_new:
-            if output[-1][:10] == '[new]     ' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
-                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[i][10:]
-            else:
-                output.append('[deleted] ' + pbu[i])
+            output.append('[deleted] ' + line)
             i += 1
         else: # str_new < str
-            if output[-1][:10] == '[deleted] ' and output[-1][g.beg_hash+10:g.end_hash+10] == pbu[g.beg_hash:g.end_hash]:
-                output[-1] = '[moved]   ' + output[-1][10:] + ' -> ' + pbu[i][10:]
-            else:
-                output.append('[new]     ' + pbu_new[j])
+            output.append('[new]     ' + line_new)
             j += 1
     # find out hash change for files with same paths
     output.sort(key=functools.cmp_to_key(pbu_path_p10_cmp))
