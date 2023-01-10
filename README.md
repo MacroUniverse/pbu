@@ -1,6 +1,8 @@
 # pbu
 simple generic backup script
 
+一个中文说明见[这里](https://wuli.wiki/online/SimBac.html).
+
 * each subfolder `folder` in `src` with `pbu.txt` (initially empty) will be backed up to `dest/folder.pbu/folder.v*`, where `*` is version number `ver`
 * `pbu.txt` keeps the info for every file inside, format: `[size] [time] [sha1] [path]`.
 * incremental backup will just move identical files from previous version, if any exist
