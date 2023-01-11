@@ -13,6 +13,7 @@ simple generic backup script
 
 # TODO
 * should keep `.pbu-old` for incremental backup that only adds new files
+* should support AES/m16 encryption (no salt), and replace filenames and folder names with hashes
 
 ## make `pbu` more like git! (without staging area)
 * `pbu status` to check source folder

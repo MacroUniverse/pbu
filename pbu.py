@@ -114,7 +114,7 @@ def size_time_sha1_cwd(fname=None, pbu=None):
                 str = '[{}/{}] {}'.format(i+1, Nf, f)
             else:
                 sha1str = sha1file(f)
-                str = '[{}/{}] (rehash) {}'.format(i+1, Nf, f)
+                str = '[{}/{}] (hash) {}'.format(i+1, Nf, f)
         if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
         elif len(str) < g.path_max_sz: str = str + ' '*round((g.path_max_sz-len(str))*1.5)
         print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
