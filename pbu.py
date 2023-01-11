@@ -18,7 +18,7 @@ class gvars:
         # ================== user params ========================
         self.base_path = '/mnt/p/' # directory to backup
         self.dest = '/mnt/q/' # backup directory to put in [folder.pbu]
-        self.ver = '0' # version number
+        self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
         self.folders = ['myfolder'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
@@ -341,6 +341,9 @@ def backup1(folder):
             folder_ver_last = backups[-1]
             dest2_last = dest1 + folder_ver_last + '/'
             print('previous backup [{}]'.format(folder_ver_last))
+            if folder_ver < folder_ver_last:
+                print('version seems to be decreasing, please check! exiting...')
+                exit(1)
         else: # no previous packup(s)
             print('previous backup not found!')
         print('', flush=True)
@@ -503,6 +506,8 @@ def main():
     if g.base_path[-1] != '/': g.base_path += '/'
     if g.dest[-1] != '/': g.dest += '/'
     g.ignore.update({'.pbu', '.pbu-old', '.pbu-new', '.pbu-diff', 'pbu-norehash'})
+    if not g.ver:
+        g.ver = datetime.datetime.now().strftime('%Y%m%d.%H%M%S')
 
     os.chdir(g.base_path)
     need_rerun = False
