@@ -28,6 +28,7 @@ class gvars:
 
         self.lazy_mode = True # hash a file only when size or time changed
         self.debug_mode = False # won't delete pbu-nohash, check incremental backup
+        self.hash_name = True # replace folder and file names with hash (first make sure tree is clean)
         
         self.path_max_sz = 100 # max length for file path display
         
@@ -322,6 +323,35 @@ def pbu_add_only(pbu, pbu1):
             new_file_list.append(j)
         return new_file_list
     return -1
+
+# for g.hash_name mode
+# read .pbu and rename every file with it's hash
+def hash_name_cwd():
+    if os.path.exists('.pbu-hashname'):
+        return
+    f = open('.pbu', 'r')
+    pbu = f.read().splitlines(); f.close()
+    for i in range(len(pbu)):
+        line = pbu[i]
+        hash = line[g.beg_hash:g.end_hash]; path = line[g.beg_path:]
+        dir, fname = os.path.split(path)
+        os.rename(path, dir + '/' + hash)
+    open('.pbu-hashname', 'w').close()
+    print('TODO: hash folder names as well!')
+    # note: renaming will not change modification time
+
+# reverse from hash_name_cwd()
+def unhash_name_cwd():
+    if not os.path.exists('.pbu-hashname'):
+        return
+    f = open('.pbu', 'r')
+    pbu = f.read().splitlines(); f.close()
+    for i in range(len(pbu)):
+        line = pbu[i]
+        hash = line[g.beg_hash:g.end_hash]; path = line[g.beg_path:]
+        dir, fname = os.path.split(path)
+        os.rename(dir + '/' + hash, path)
+    os.remove('.pbu-hashname')
 
 # backup or check a single folder
 def backup1(folder):
