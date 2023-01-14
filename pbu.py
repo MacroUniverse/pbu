@@ -16,8 +16,8 @@ import natsort # natural sort folder name
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.base_path = '/mnt/p/' # directory to backup
-        self.dest = '/mnt/q/' # backup directory to put in [folder.pbu]
+        self.base_path = '/mnt/e/' # directory to backup
+        self.dest = '/mnt/z/' # backup directory to put in [folder.pbu]
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
         self.folders = ['myfolder'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
@@ -69,6 +69,14 @@ def pbu_path_p10_cmp(line, line1):
     if str1 < str: return 1
     return 0
 
+# print a line then move cursor to the front
+def print_tmp_line(str):
+    if len(str) > g.path_max_sz:
+        str = str[:g.path_max_sz-3] + '...'
+    elif len(str) < g.path_max_sz:
+        str = str + ' '*round((g.path_max_sz-len(str))*1.5)
+    print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
+
 # generate .pbu
 # return list of lines of in `.pbu` format
 # write to file if fname provided
@@ -106,19 +114,16 @@ def size_time_sha1_cwd(fname=None, pbu=None):
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
         # get hash
         if not lazy_mode:
+            print_tmp_line('[{}/{}] {}'.format(i+1, Nf, f))
             sha1str = sha1file(f)
-            str = '[{}/{}] {}'.format(i+1, Nf, f)
         else: # lazy mode
             key = size_str + ' ' + time_str + ' ' + f
             if key in hash_dict:
+                print_tmp_line('[{}/{}] {}'.format(i+1, Nf, f))
                 sha1str = hash_dict[key]
-                str = '[{}/{}] {}'.format(i+1, Nf, f)
             else:
+                print_tmp_line('[{}/{}] (hash) {}'.format(i+1, Nf, f))
                 sha1str = sha1file(f)
-                str = '[{}/{}] (hash) {}'.format(i+1, Nf, f)
-        if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
-        elif len(str) < g.path_max_sz: str = str + ' '*round((g.path_max_sz-len(str))*1.5)
-        print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
         lines.append(size_str + ' ' + time_str + ' ' + sha1str + ' ' + f)
     # sort accordig to '[size] [hash] [path]'
     lines.sort(key=functools.cmp_to_key(pbu_line_cmp))
@@ -427,10 +432,12 @@ def backup1(folder):
         # no change or only added file(s)
         # can rename version directly
         print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
-        os.rename(dest2_last, dest2); print('', flush=True)
+        os.rename(dest2_last, dest2)
         if not cp_inds:
             print('done.')
             return False
+        print('', flush=True)
+
         # cp_inds not empty
         print('copying new files to [{}]...'.format(folder_ver))
         os.chdir(g.base_path + folder)
@@ -438,10 +445,7 @@ def backup1(folder):
         for i in range(Ncp):
             ind = cp_inds[i]
             path = pbu[ind][g.beg_path:]
-            str = '[{}/{}] {}'.format(i+1, Ncp, path)
-            if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
-            elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
-            print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
+            print_tmp_line('[{}/{}] {}'.format(i+1, Ncp, path))
             # ensure dest path exist
             dir = os.path.split(dest2+path)[0]
             if not os.path.exists(dir):
@@ -470,10 +474,7 @@ def backup1(folder):
     for i in range(Nf):
         size_hash = pbu[i][g.beg_size:g.end_size+1] + pbu[i][g.beg_hash:g.end_hash]
         path = pbu[i][g.beg_path:]
-        str = '[{}/{}] {}'.format(i+1, Nf, path)
-        if len(str) > g.path_max_sz: str = str[:g.path_max_sz-3] + '...'
-        elif len(str) < g.path_max_sz: str = str + ' '*(g.path_max_sz-len(str))
-        print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
+        print_tmp_line('[{}/{}] {}'.format(i+1, Nf, path))
         # ensure dest path exist
         dir = os.path.split(dest2+path)[0]
         if not os.path.exists(dir):
