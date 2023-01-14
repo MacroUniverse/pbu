@@ -429,6 +429,7 @@ def backup1(folder):
         print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
         os.rename(dest2_last, dest2); print('', flush=True)
         if not cp_inds:
+            print('done.')
             return False
         # cp_inds not empty
         print('copying new files to [{}]...'.format(folder_ver))
@@ -525,7 +526,7 @@ def backup1(folder):
             if (check_cwd(g.lazy_mode)):
                 print('internal error: incremental backup failed!')
                 need_rerun = True
-        print('everything ok!\n', flush=True)
+        print('done.\n', flush=True)
 
     return need_rerun
 
