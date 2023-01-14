@@ -584,7 +584,8 @@ def main():
         if folder in g.ignore_folders:
             print('folder ignored by `ignore_folders` param.')
             continue
-        need_rerun = backup1(folder)
+        if backup1(folder):
+            need_rerun = True
 
     if need_rerun:
         print('--------- review & rerun needed ----------')
