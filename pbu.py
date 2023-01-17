@@ -527,8 +527,7 @@ def backup1(folder):
             if (check_cwd(g.lazy_mode)):
                 print('internal error: incremental backup failed!')
                 need_rerun = True
-        print('done.\n', flush=True)
-
+    print('done.\n', flush=True)
     return need_rerun
 
 
