@@ -96,13 +96,18 @@ def size_time_sha1_cwd(fname=None, pbu=None):
         for line in pbu:
             key = line[:g.end_time] + line[g.beg_path-1:]
             hash_dict[key] = line[g.beg_hash:g.end_hash]
-
+    warn_link = True
     for i in range(Nf):
         f = flist[i][2:]
         if not os.path.exists(f): # deleted just now
             continue
         name = os.path.split(f)[1]
         if name in ignore:
+            continue
+        if os.path.islink(f):
+            if warn_link:
+                print('### warning: symlink is currently not supported! ignored!')
+                warn_link = False
             continue
         f_ignored = False
         for ext in g.ignore_ext:
@@ -237,6 +242,12 @@ def diff_cwd():
 # sha1sum of a file
 # use 1MiB buffer size fot big file
 def sha1file(fname, buff_sz=1024*1024):
+    # if os.path.islink(fname):
+    #     target = os.readlink(fname)
+    #     print(fname, '->', target)
+    #     sha1 = hashlib.sha1(target.encode('utf-8'))
+    #     return sha1.hexdigest()
+        
     if os.path.getsize(fname) <= buff_sz:
         try:
             f = open(fname, 'rb')
