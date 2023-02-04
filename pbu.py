@@ -445,7 +445,7 @@ def backup1(folder):
         print('rename [{}] to [{}]'.format(folder_ver_last, folder_ver))
         os.rename(dest2_last, dest2)
         if not cp_inds:
-            print('done.')
+            print('done.', flush=True)
             return False
         print('', flush=True)
 
@@ -467,6 +467,7 @@ def backup1(folder):
         pbu_dest.sort(key=functools.cmp_to_key(pbu_line_cmp))
         f = open(dest2 + '.pbu', 'w')
         f.write('\n'.join(pbu_dest) + '\n'); f.close(); print('')
+        print('done.', flush=True)
         return False
     else:
         print('cannot rename.\n'.format(folder), flush=True)
@@ -538,7 +539,7 @@ def backup1(folder):
             if (check_cwd(g.lazy_mode)):
                 print('internal error: incremental backup failed!')
                 need_rerun = True
-    print('done.\n', flush=True)
+    print('done.', flush=True)
     return need_rerun
 
 
