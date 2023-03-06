@@ -9,9 +9,10 @@ simple generic backup script
 * `lazy_mode`: hash a file only when size or time changed. This will not protect against bit rot, turn off once in a while and rerun.
 * \[deprecated\] create an empty file `pbu-norehash` in the same folder with `pbu.txt` to let the script assume folder is up to date and do nochecking at all.
 
-![flowchart](pbu.png)
+![flowchart](flow-chart.png)
 
 # TODO
+* all symbolic links are omitted for now!
 * should keep `.pbu-old` for incremental backup that only adds new files
 * should support AES/m16 encryption (no salt), and replace filenames and folder names with hashes
 
