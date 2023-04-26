@@ -16,17 +16,19 @@ import natsort # natural sort folder name
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.base_path = '/mnt/e/' # directory to backup
+        self.base_path = '/mnt/f/' # directory to backup
+        # /mnt/c/Users/addis/  /mnt/e/
         self.dest = '/mnt/z/' # backup directory to put in [folder.pbu]
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
-        self.folders = ['myfolder'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
+        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
         self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignore file extensions
 
         self.lazy_mode = True # hash a file only when size or time changed
+        self.lazy_check = True # if nothing is deleted or changed, then skip manual check
         self.debug_mode = False # won't delete pbu-nohash, check incremental backup
         self.hash_name = True # replace folder and file names with hash (first make sure tree is clean)
         
@@ -186,10 +188,15 @@ def check_cwd(lazy_mode):
             f = open('.pbu-new', 'w')
             f.write('\n'.join(pbu_new) + '\n'); f.close()
             f = open('.pbu-diff', 'w')
-            f.write(diff_cwd()); f.close()
+            output,Ndelete,Nchange,Nnew,Nmove = diff_cwd()
+            print('[deleted]', Ndelete, '\n[changed]', Nchange, '\n[new]', Nnew, '\n[moved]', Nmove)
+            f.write(output); f.close()
             print('folder has change, review .pbu-diff, if everything ok, replace .pbu with .pbu-new, delete .pbu-diff, and add pbu-norehash')
             print('for a more human readable form of .pbu-diff, you can also use:')
             print('`git diff --no-index --word-diff .pbu .pbu-new`\n', flush=True)
+            if g.lazy_check and Ndelete == 0 and Nchange == 0:
+                print('-- skiping human review due to `lazy_check` option. --')
+                os.rename('.pbu', '.pbu-old'); os.rename('.pbu-new', '.pbu')
             return True
         else:
             print('no change or corruption!', flush=True)
@@ -205,14 +212,15 @@ def diff_cwd():
     pbu_new = f.read().splitlines(); f.close()
     i = 0; j = 0
     output = []
+    Ndelete = Nchange = Nnew = Nmove = 0
     while 1:
         if i == len(pbu):
             for j in range(j, len(pbu_new)):
-                output.append('[new]     ' + pbu_new[j])
+                output.append('[new]     ' + pbu_new[j]); Nnew += 1
             break
         elif j == len(pbu_new):
             for i in range(i, len(pbu)):
-                output.append('[deleted] ' + pbu[i])
+                output.append('[deleted] ' + pbu[i]); Ndelete += 1
             break
         line = pbu[i]; line_new = pbu_new[j]
         str = line[:g.end_size] + ' ' + line[g.beg_hash:]
@@ -222,13 +230,13 @@ def diff_cwd():
         elif line[g.beg_hash:g.end_hash] == line_new[g.beg_hash:g.end_hash]:
             # same hash, different path
             output.append('[moved]   ' + line + ' -> ' + line_new[g.beg_path:])
-            i += 1; j += 1
+            Nmove += 1; i += 1; j += 1
         elif str < str_new:
             output.append('[deleted] ' + line)
-            i += 1
+            Ndelete += 1; i += 1
         else: # str_new < str
             output.append('[new]     ' + line_new)
-            j += 1
+            Nnew += 1; j += 1
     # find out hash change for files with same paths
     output.sort(key=functools.cmp_to_key(pbu_path_p10_cmp))
     i = 0
@@ -237,7 +245,7 @@ def diff_cwd():
             output[i] = '[changed] ' + output[i][10:]
             del output[i+1]
         i += 1
-    return '\n'.join(output) + '\n'
+    return '\n'.join(output) + '\n', Ndelete, Nchange, Nnew, Nmove
 
 # sha1sum of a file
 # use 1MiB buffer size fot big file
