@@ -12,6 +12,7 @@ simple generic backup script
 ![flowchart](flow-chart.png)
 
 # TODO
+* in `.pbu` backup folder, every file should only have 1 copy
 * all symbolic links are omitted for now!
 * should keep `.pbu-old` for incremental backup that only adds new files
 * should support AES/m16 encryption (no salt), and replace filenames and folder names with hashes
