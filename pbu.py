@@ -21,16 +21,17 @@ class gvars:
         self.dest = '/mnt/z/' # backup directory to put in [folder.pbu]
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
-        self.folders = ['myfolder'] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
+        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
+        self.ignore_ext = {} # ignored extensions
         self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignore file extensions
 
         self.lazy_mode = True # hash a file only when size or time changed
         self.lazy_check = True # if nothing is deleted or changed, then skip manual check
         self.debug_mode = False # won't delete `pbu-norehash`, check incremental backup
-        self.hash_name = True # replace folder and file names with hash (first make sure tree is clean)
+        self.hash_name = False # replace folder and file names with hash (first make sure tree is clean)
         
         self.path_max_sz = 100 # max length for file path display
         
