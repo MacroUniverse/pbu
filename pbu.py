@@ -17,19 +17,19 @@ class gvars:
     def __init__(self):
         # ================== user params ========================
         self.base_path = '/mnt/e/' # directory to backup
+        self.folders = [] # folder(s) in base_path to backup (use [] to detect sub-folders with .pbu)
+
         # /mnt/c/Users/addis/  /mnt/e/
-        self.dest = '/mnt/z/' # backup directory to put in [folder.pbu]
+        self.dest = '/mnt/z/' # backup directory for [folder.pbu] folders
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
-        self.folders = [] # folder(s) in base_path to backup (use [] to detect folders with .pbu)
         self.start = '' # skip until this folder.
         self.ignore_folders = [] # ignore these folders.
         self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
-        self.ignore_ext = {} # ignored extensions
-        self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignore file extensions
+        self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignored file extensions
 
-        self.lazy_mode = True # hash a file only when size or time changed
-        self.lazy_check = True # if nothing is deleted or changed, then skip manual check
+        self.lazy_mode = True # hash a file only when size or time changed [should change this option to the partial checksum algo in rm_repeat]
+        self.lazy_check = True # if nothing is deleted or changed, skip manual check
         self.debug_mode = False # won't delete `pbu-norehash`, check incremental backup
         self.hash_name = False # replace folder and file names with hash (first make sure tree is clean)
         
