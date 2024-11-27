@@ -1,14 +1,9 @@
 #! /usr/bin/python3
 # a very simple incremental backup utility
 
-import os
-import sys
+import os, sys, shutil, datetime, time, errno, functools
 import hashlib # for sha1sum
 import subprocess # for calling shell command
-import shutil # for copy file
-import errno
-import datetime
-import functools
 import natsort # natural sort folder name
 
 # globle variables (with default values)
@@ -24,7 +19,7 @@ class gvars:
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
         self.start = '' # skip until this folder.
-        self.ignore_folders = [] # ignore these folders.
+        self.ignore_folders = {'@eaDir'} # ignore these folders.
         self.ignore = {'Thumbs.db', 'desktop.ini'} # ignored file names
         self.ignore_ext = {'.baiduyun.uploading.cfg'} # ignored file extensions
 
@@ -34,6 +29,7 @@ class gvars:
         self.hash_name = False # replace folder and file names with hash (first make sure tree is clean)
         
         self.path_max_sz = 100 # max length for file path display
+        self.auto_save_period = 120 # time (seconds) period of auto-save to .pbu-new-asv
         
         # ================ internal constants ===================
         # .pbu line forma
@@ -84,8 +80,8 @@ def print_tmp_line(str):
 # return list of lines of in `.pbu` format
 # write to file if fname provided
 # lazy mode: input the `pbu` (list of line) from `.pbu`
-def size_time_sha1_cwd(fname=None, pbu=None):
-    lazy_mode = pbu != None
+def size_time_sha1_cwd(fname=None, pbu=None, pbu_asv=None):
+    lazy_mode = (pbu != None)
     flist = file_list_r('./')
     lines = []
     Nf = len(flist)
@@ -99,7 +95,11 @@ def size_time_sha1_cwd(fname=None, pbu=None):
         for line in pbu:
             key = line[:g.end_time] + line[g.beg_path-1:]
             hash_dict[key] = line[g.beg_hash:g.end_hash]
+        for line in pbu_asv:
+            key = line[:g.end_time] + line[g.beg_path-1:]
+            hash_dict[key] = line[g.beg_hash:g.end_hash]
     warn_link = True
+    auto_save_time = time.time()
     for i in range(Nf):
         f = flist[i][2:]
         if not os.path.exists(f): # deleted just now
@@ -116,7 +116,8 @@ def size_time_sha1_cwd(fname=None, pbu=None):
         for ext in g.ignore_ext:
             if name[-len(ext):] == ext:
                 f_ignored = True; break
-        if f_ignored: continue
+        if f_ignored:
+            continue
         # get size and time
         size_str = '%014d' % os.stat(f).st_size
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
@@ -133,12 +134,19 @@ def size_time_sha1_cwd(fname=None, pbu=None):
                 print_tmp_line('[{}/{}] (hash) {}'.format(i+1, Nf, f))
                 sha1str = sha1file(f)
         lines.append(size_str + ' ' + time_str + ' ' + sha1str + ' ' + f)
+        # auto-save
+        current_time = time.time()
+        if current_time - auto_save_time >= g.auto_save_period:
+            with open('.pbu-new-asv-writing', 'w') as f:
+                f.write('\n'.join(lines) + '\n')
+            os.rename('.pbu-new-asv-writing', '.pbu-new-asv')
+            auto_save_time = current_time
     # sort accordig to '[size] [hash] [path]'
     lines.sort(key=functools.cmp_to_key(pbu_line_cmp))
     print('', flush=True)
     if fname != None:
-        f = open(fname, 'w')
-        f.write('\n'.join(lines) + '\n'); f.close()
+        with open(fname, 'w') as f:
+            f.write('\n'.join(lines) + '\n')
     return lines
 
 # return True if review is needed, otherwise directory will be clean after return
@@ -176,22 +184,29 @@ def check_cwd(lazy_mode):
             os.remove('pbu-norehash')
         return False
     else: # .pbu non-empty, rehash
-        f = open('.pbu', 'r')
-        pbu = f.read().splitlines(); f.close()
+        with open('.pbu', 'r') as f:
+            pbu = f.read().splitlines()
         if lazy_mode:
+            pbu_asv = []
+            if os.path.exists('.pbu-new-asv'):
+                with open('.pbu-new-asv', 'r') as f:
+                    pbu_asv = f.read().splitlines()
+                os.remove('.pbu-new-asv')
+            if os.path.exists('.pbu-new-asv-writing'):
+                os.remove('.pbu-new-asv-writing')
             print('lazy mode (size and time)...', flush=True)
-            pbu_new = size_time_sha1_cwd(None, pbu)
+            pbu_new = size_time_sha1_cwd(None, pbu, pbu_asv)
         else:
             print('rehashing...', flush=True)
             pbu_new = size_time_sha1_cwd()
-        
+
         if pbu_changed(pbu, pbu_new): # has change
-            f = open('.pbu-new', 'w')
-            f.write('\n'.join(pbu_new) + '\n'); f.close()
-            f = open('.pbu-diff', 'w')
+            with open('.pbu-new', 'w') as f:
+                f.write('\n'.join(pbu_new) + '\n')
             output,Ndelete,Nchange,Nnew,Nmove = diff_cwd()
             print('[deleted]', Ndelete, '\n[changed]', Nchange, '\n[new]', Nnew, '\n[moved]', Nmove)
-            f.write(output); f.close()
+            with open('.pbu-diff', 'w') as f:
+                f.write(output)
             print('folder has change, review .pbu-diff, if everything ok, replace .pbu with .pbu-new, delete .pbu-diff, and add pbu-norehash')
             print('for a more human readable form of .pbu-diff, you can also use:')
             print('`git diff --no-index --word-diff .pbu .pbu-new`\n', flush=True)
@@ -201,16 +216,16 @@ def check_cwd(lazy_mode):
             return True
         else:
             print('no change or corruption!', flush=True)
-            f = open('.pbu', 'w') # time might change, update.
-            f.write('\n'.join(pbu_new) + '\n'); f.close()
+            with open('.pbu', 'w') as f: # time might change, update.
+                f.write('\n'.join(pbu_new) + '\n')
             return False
 
 # show difference between .pbu-new and .pbu of current folder
 def diff_cwd():
-    f = open('.pbu', 'r')
-    pbu = f.read().splitlines(); f.close()
-    f = open('.pbu-new', 'r')
-    pbu_new = f.read().splitlines(); f.close()
+    with open('.pbu', 'r') as f:
+        pbu = f.read().splitlines()
+    with open('.pbu-new', 'r') as f:
+        pbu_new = f.read().splitlines()
     i = 0; j = 0
     output = []
     Ndelete = Nchange = Nnew = Nmove = 0
@@ -259,10 +274,10 @@ def sha1file(fname, buff_sz=1024*1024):
         
     if os.path.getsize(fname) <= buff_sz:
         try:
-            f = open(fname, 'rb')
+            with open(fname, 'rb') as f:
+                data = f.read()
         except PermissionError:
             print('no permission to read file:', fname); exit(1)
-        data = f.read()
         sha1 = hashlib.sha1(data)
     else:
         sha1 = hashlib.sha1()
@@ -354,8 +369,8 @@ def pbu_add_only(pbu, pbu1):
 def hash_name_cwd():
     if os.path.exists('.pbu-hashname'):
         return
-    f = open('.pbu', 'r')
-    pbu = f.read().splitlines(); f.close()
+    with open('.pbu', 'r') as f:
+        pbu = f.read().splitlines()
     for i in range(len(pbu)):
         line = pbu[i]
         hash = line[g.beg_hash:g.end_hash]; path = line[g.beg_path:]
@@ -369,8 +384,8 @@ def hash_name_cwd():
 def unhash_name_cwd():
     if not os.path.exists('.pbu-hashname'):
         return
-    f = open('.pbu', 'r')
-    pbu = f.read().splitlines(); f.close()
+    with open('.pbu', 'r') as f:
+        pbu = f.read().splitlines()
     for i in range(len(pbu)):
         line = pbu[i]
         hash = line[g.beg_hash:g.end_hash]; path = line[g.beg_path:]
@@ -416,10 +431,10 @@ def backup1(folder):
         if (check_cwd(g.lazy_mode)):
             return True
         # compare 2 .pbu
-        f = open(dest2 + '.pbu', 'r')
-        pbu_dest = f.read().splitlines(); f.close()
-        f = open(g.base_path + folder + '/.pbu', 'r')
-        pbu = f.read().splitlines(); f.close()
+        with open(dest2 + '.pbu', 'r') as f:
+            pbu_dest = f.read().splitlines()
+        with open(g.base_path + folder + '/.pbu', 'r') as f:
+            pbu = f.read().splitlines()
         if (pbu_changed(pbu, pbu_dest)):
             print('.pbu differs from source! please use a new version number and run again.')
             print('', flush=True)
@@ -443,10 +458,10 @@ def backup1(folder):
     if (check_cwd(g.lazy_mode)):
         return True
     # compare 2 .pbu
-    f = open(dest2_last + '.pbu', 'r')
-    pbu_dest = f.read().splitlines(); f.close()
-    f = open(g.base_path + folder + '/.pbu', 'r')
-    pbu = f.read().splitlines(); f.close()
+    with open(dest2_last + '.pbu', 'r') as f:
+        pbu_dest = f.read().splitlines()
+    with open(g.base_path + folder + '/.pbu', 'r') as f:
+        pbu = f.read().splitlines()
     cp_inds = pbu_add_only(pbu_dest, pbu)
     if isinstance(cp_inds, list):
         # no change or only added file(s)
@@ -474,8 +489,9 @@ def backup1(folder):
             pbu_dest.append(pbu[ind])
         print(''); print('update .pbu')
         pbu_dest.sort(key=functools.cmp_to_key(pbu_line_cmp))
-        f = open(dest2 + '.pbu', 'w')
-        f.write('\n'.join(pbu_dest) + '\n'); f.close(); print('')
+        with open(dest2 + '.pbu', 'w') as f:
+            f.write('\n'.join(pbu_dest) + '\n')
+        print('')
         print('done.', flush=True)
         return False
     else:
@@ -484,11 +500,11 @@ def backup1(folder):
     # --- incremental backup ---
     # pbu must be sorted accordig to '[size] [hash]'
     print('---- starting incremental backup ----', flush=True)
-    f = open(dest2_last + '.pbu', 'r')
-    pbu_last = f.read().splitlines(); f.close()
+    with open(dest2_last + '.pbu', 'r') as f:
+        pbu_last = f.read().splitlines()
     os.chdir(g.base_path + folder)
-    f = open('.pbu', 'r')
-    pbu = f.read().splitlines(); f.close()
+    with open('.pbu', 'r') as f:
+        pbu = f.read().splitlines()
     rename_count = 0; i = j = 0
     
     Nf = len(pbu)
@@ -516,16 +532,16 @@ def backup1(folder):
             j += 1
         if not match: # no match, just copy
             shutil.copy2(path, dest2+path)
-    f = open(dest2 + '.pbu', 'w')
-    f.write('\n'.join(pbu) + '\n'); f.close()
+    with open(dest2 + '.pbu', 'w') as f:
+        f.write('\n'.join(pbu) + '\n')
     
     # update previous .pbu
     print('update .pbu in previous version, rename the original to .pbu-old')    
     os.rename(dest2_last + '.pbu', dest2_last + '.pbu-old')
     delta_remainder_warning = False
     if pbu_last:
-        f = open(dest2_last + '.pbu', 'w')
-        f.write('\n'.join(pbu_last) + '\n'); f.close()
+        with open(dest2_last + '.pbu', 'w') as f:
+            f.write('\n'.join(pbu_last) + '\n')
     else:
         print('internal warning: incremental backup should not happen, the backup folder should have been renamed to new version.')
         print('this is only an optimization warning, your backup is ok!')
@@ -557,7 +573,8 @@ def backup1(folder):
 def main():
     if g.base_path[-1] != '/': g.base_path += '/'
     if g.dest[-1] != '/': g.dest += '/'
-    g.ignore.update({'.pbu', '.pbu-old', '.pbu-new', '.pbu-diff', 'pbu-norehash'})
+    g.ignore.update({'.pbu', '.pbu-old', '.pbu-new', '.pbu-diff',
+                    'pbu-norehash', '.pbu-new-asv', '.pbu-new-asv-writing'})
     if not g.ver:
         g.ver = datetime.datetime.now().strftime('%Y%m%d.%H%M%S')
 
