@@ -1,21 +1,27 @@
 #! /usr/bin/python3
 # a very simple incremental backup utility
 
-import os, sys, shutil, datetime, time, errno, functools
+import os, platform, sys, shutil, datetime, time, errno, functools
 import hashlib # for sha1sum
 import subprocess # for calling shell command
 import natsort # natural sort folder name
+
+if platform.system() == 'Linux':
+    # Check if the script is run as root (UID 0)
+    if os.geteuid() != 0:
+        print('must run as root!')
+        exit(1)
 
 # globle variables (with default values)
 # should only be set once at most
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.base_path = '/mnt/e/' # directory to backup
-        self.folders = [] # folder(s) in base_path to backup (use [] to detect sub-folders with .pbu)
+        self.base_path = '/mnt/z/' # directory to backup
+        self.folders = ['abc', 'def'] # folder(s) in base_path to backup (use [] to detect sub-folders with .pbu)
 
         # /mnt/c/Users/addis/  /mnt/e/
-        self.dest = '/mnt/z/' # backup directory for [folder.pbu] folders
+        self.dest = '/mnt/y/pbu/' # backup directory for [folder.pbu] folders
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
         self.start = '' # skip until this folder.
