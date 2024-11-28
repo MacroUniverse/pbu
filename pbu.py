@@ -87,7 +87,6 @@ def print_tmp_line(str):
 # write to file if fname provided
 # lazy mode: input the `pbu` (list of line) from `.pbu`
 def size_time_sha1_cwd(fname=None, pbu=None, pbu_asv=None):
-    lazy_mode = (pbu != None)
     flist = file_list_r('./')
     lines = []
     Nf = len(flist)
@@ -96,7 +95,7 @@ def size_time_sha1_cwd(fname=None, pbu=None, pbu_asv=None):
         ignore.add(fname)
 
     # create dict from '[size] [time] [path]' to [sha1]
-    if lazy_mode:
+    if g.lazy_mode:
         hash_dict = {}
         for line in pbu:
             key = line[:g.end_time] + line[g.beg_path-1:]
@@ -128,7 +127,7 @@ def size_time_sha1_cwd(fname=None, pbu=None, pbu_asv=None):
         size_str = '%014d' % os.stat(f).st_size
         time_str = datetime.datetime.fromtimestamp(os.path.getmtime(f)).strftime('%Y%m%d.%H%M%S')
         # get hash
-        if not lazy_mode:
+        if not g.lazy_mode:
             print_tmp_line('[{}/{}] {}'.format(i+1, Nf, f))
             sha1str = sha1file(f)
         else: # lazy mode
@@ -156,7 +155,7 @@ def size_time_sha1_cwd(fname=None, pbu=None, pbu_asv=None):
     return lines
 
 # return True if review is needed, otherwise directory will be clean after return
-def check_cwd(lazy_mode):
+def check_cwd():
     if os.path.exists('.pbu-new'):
         print('pending review, replace .pbu with .pbu-new when done.\n', flush=True)
         return True
@@ -192,7 +191,7 @@ def check_cwd(lazy_mode):
     else: # .pbu non-empty, rehash
         with open('.pbu', 'r') as f:
             pbu = f.read().splitlines()
-        if lazy_mode:
+        if g.lazy_mode:
             pbu_asv = []
             if os.path.exists('.pbu-new-asv'):
                 with open('.pbu-new-asv', 'r') as f:
@@ -427,14 +426,14 @@ def backup1(folder):
     # === check source folder ===
     print('checking', '['+folder+']'); print('-'*40, flush=True)
     os.chdir(g.base_path + folder)
-    if (check_cwd(g.lazy_mode)):
+    if check_cwd():
         # `folder` has change or corruption
         return True
     elif os.path.exists(dest2):
         # backup folder already exist, check
         print(''); os.chdir(dest2)
         print('checking ['+folder_ver+']'); print('-'*40, flush=True)
-        if (check_cwd(g.lazy_mode)):
+        if check_cwd():
             return True
         # compare 2 .pbu
         with open(dest2 + '.pbu', 'r') as f:
@@ -461,7 +460,7 @@ def backup1(folder):
     # last version backup exist
     os.chdir(dest2_last); print('')
     print('checking ['+folder_ver_last+']'); print('-'*40, flush=True)
-    if (check_cwd(g.lazy_mode)):
+    if check_cwd():
         return True
     # compare 2 .pbu
     with open(dest2_last + '.pbu', 'r') as f:
@@ -567,7 +566,7 @@ def backup1(folder):
         print('------- DEBUG: rehash last backup folder ------')
         if not delta_remainder_warning:
             os.chdir(dest2_last)
-            if (check_cwd(g.lazy_mode)):
+            if check_cwd():
                 print('internal error: incremental backup failed!')
                 need_rerun = True
     print('done.', flush=True)
