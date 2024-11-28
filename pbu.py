@@ -36,6 +36,7 @@ class gvars:
         
         self.path_max_sz = 100 # max length for file path display
         self.auto_save_period = 120 # time (seconds) period of auto-save to .pbu-new-asv
+        self.print_period = 30 # time (seconds) period of printing a line of report, use -1 to print every file before using '\r' to erase it
         
         # ================ internal constants ===================
         # .pbu line forma
@@ -75,12 +76,23 @@ def pbu_path_p10_cmp(line, line1):
     return 0
 
 # print a line then move cursor to the front
+last_print_time = 0
+
 def print_tmp_line(str):
+    global last_print_time
     if len(str) > g.path_max_sz:
         str = str[:g.path_max_sz-3] + '...'
     elif len(str) < g.path_max_sz:
         str = str + ' '*round((g.path_max_sz-len(str))*1.5)
-    print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
+    
+    if g.print_period < 0:
+        print(str+'\r', end="", flush=True) # \r moves the cursur the start of line
+    else:
+        # print current status at least every `current_time` seconds
+        current_time = time.time()
+        if current_time - last_print_time > g.print_period:
+            print(str, flush=True)
+            last_print_time = current_time
 
 # generate .pbu
 # return list of lines of in `.pbu` format
