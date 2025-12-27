@@ -17,11 +17,11 @@ if platform.system() == 'Linux':
 class gvars:
     def __init__(self):
         # ================== user params ========================
-        self.base_path = '/mnt/z/' # directory to backup
-        self.folders = ['abc', 'def'] # folder(s) in base_path to backup (use [] to detect sub-folders with .pbu)
+        self.base_path = '/mnt/pie/vid2/' # directory to backup
+        self.folders = ['bx', 'pljj'] # folder(s) in base_path to backup (use [] to detect sub-folders with .pbu)
 
         # /mnt/c/Users/addis/  /mnt/e/
-        self.dest = '/mnt/y/pbu/' # backup directory for [folder.pbu] folders
+        self.dest = '/mnt/yue/pbu/' # backup directory for [folder.pbu] folders
         self.ver = '' # version number (use yyyymmdd.hhmmss if empty)
 
         self.start = '' # skip until this folder.
@@ -33,11 +33,11 @@ class gvars:
         self.lazy_check = True # if nothing is deleted or changed, skip manual check
         self.debug_mode = False # won't delete `pbu-norehash`, check incremental backup
         self.hash_name = False # replace folder and file names with hash (first make sure tree is clean)
-        
+
         self.path_max_sz = 100 # max length for file path display
         self.auto_save_period = 120 # time (seconds) period of auto-save to .pbu-new-asv
         self.print_period = 30 # time (seconds) period of printing a line of report, use -1 to print every file before using '\r' to erase it
-        
+
         # ================ internal constants ===================
         # .pbu line forma
         self.beg_size = 0; self.end_size = 14 # size string (14)
@@ -157,6 +157,7 @@ def size_time_sha1_cwd(fname=None, pbu=None, pbu_asv=None):
             with open('.pbu-new-asv-writing', 'w') as f:
                 f.write('\n'.join(lines) + '\n')
             os.rename('.pbu-new-asv-writing', '.pbu-new-asv')
+            print('(auto saved .pbu-new-asv)')
             auto_save_time = current_time
     # sort accordig to '[size] [hash] [path]'
     lines.sort(key=functools.cmp_to_key(pbu_line_cmp))
